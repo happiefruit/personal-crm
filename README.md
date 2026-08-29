@@ -129,6 +129,11 @@ with the AI's revised one, and the note is filed. Needs `ANTHROPIC_API_KEY`;
 without it `/api/ai/*` returns 503 and the capture box falls back to manual
 filing. `~$0.001–0.002` per note.
 
+The **Add a note** box on a person's profile uses the same flow in "locked"
+mode — no person picker, the review card is headed "Update <name>", and
+Confirm updates that person's structured fields / summary in place. "Save note
+only" files the note and bumps `last_contacted_at` without changing any field.
+
 ## Notes on the backend ↔ Supabase link
 
 The backend does **not** use `@supabase/supabase-js` — its current major hard-requires

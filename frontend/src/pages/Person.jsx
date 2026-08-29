@@ -4,7 +4,7 @@ import { api } from '../lib/api.js';
 import { useAsync } from '../lib/useAsync.js';
 import { computeAge, formatDate, formatDateTime, relativeTime } from '../lib/format.js';
 import { Button, Card, Chip, ErrorNote, Spinner, TextInput } from '../components/ui.jsx';
-import QuickCapture from '../components/QuickCapture.jsx';
+import SmartCapture from '../components/SmartCapture.jsx';
 
 const csv = (arr) => (arr || []).join(', ');
 const parseCsv = (s) =>
@@ -365,11 +365,17 @@ export default function Person() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { data, error, loading, reload, setData } = useAsync(
-    () => Promise.all([api.get(`/api/people/${id}`), api.get('/api/people')]),
+    () =>
+      Promise.all([
+        api.get(`/api/people/${id}`),
+        api.get('/api/people'),
+        api.get('/api/health').catch(() => ({})),
+      ]),
     [id],
   );
   const person = data?.[0];
   const allPeople = data?.[1] || [];
+  const aiAvailable = Boolean(data?.[2]?.ai_available);
   const [editing, setEditing] = useState(false);
 
   async function removePerson() {
@@ -401,7 +407,7 @@ export default function Person() {
           person={person}
           onCancel={() => setEditing(false)}
           onSaved={(updated) => {
-            setData([{ ...person, ...updated }, allPeople]);
+            setData([{ ...person, ...updated }, allPeople, data?.[2]]);
             setEditing(false);
           }}
         />
@@ -482,7 +488,12 @@ export default function Person() {
 
       <Card>
         <h3 className="mb-2 font-medium">Add a note</h3>
-        <QuickCapture lockedPersonId={person.id} onSaved={reload} />
+        <SmartCapture
+          aiAvailable={aiAvailable}
+          people={allPeople}
+          lockedPerson={{ id: person.id, name: person.name }}
+          onSaved={reload}
+        />
       </Card>
 
       <div>

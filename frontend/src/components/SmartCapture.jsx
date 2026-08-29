@@ -16,12 +16,14 @@ const REL_TYPES = [
   'parent', 'child', 'grandparent', 'grandchild', 'manager', 'report',
 ];
 
-function SuggestionReview({ result, onCancel, onApplied }) {
+function SuggestionReview({ result, lockedPerson, onCancel, onApplied }) {
   const { note, suggestion, people } = result;
   const [target, setTarget] = useState(
-    suggestion.person_match === 'existing' && suggestion.matched_person_id
-      ? suggestion.matched_person_id
-      : 'new',
+    lockedPerson
+      ? lockedPerson.id
+      : suggestion.person_match === 'existing' && suggestion.matched_person_id
+        ? suggestion.matched_person_id
+        : 'new',
   );
   const [name, setName] = useState(suggestion.name);
   const [relationship, setRelationship] = useState(suggestion.relationship_guess || '');
@@ -66,36 +68,42 @@ function SuggestionReview({ result, onCancel, onApplied }) {
   const isNew = target === 'new';
   const matched = people.find((p) => p.id === target);
 
-  async function confirm() {
+  async function confirm({ noEdits = false } = {}) {
     setBusy(true);
     setError(null);
     try {
-      const person = await api.post('/api/ai/apply', {
+      const base = {
         note_id: note.id,
         person_match: isNew ? 'new' : 'existing',
         person_id: isNew ? null : target,
         name: name.trim(),
-        relationship: relationship.trim() || null,
-        tags: parseCsv(tags),
-        important_dates: suggestion.important_dates,
-        summary: summary.trim() || null,
-        birthdate: details.birthdate.trim() || null,
-        pronouns: details.pronouns.trim() || null,
-        job_title: details.job_title.trim() || null,
-        company: details.company.trim() || null,
-        location: details.location.trim() || null,
-        how_we_met: details.how_we_met.trim() || null,
-        likes: parseCsv(details.likes),
-        dislikes: parseCsv(details.dislikes),
-        mentioned_people: mentions
-          .filter((m) => m.action !== 'skip')
-          .map((m) => ({
-            action: m.action,
-            name: m.name,
-            relationship_to_subject: m.relationship_to_subject,
-            person_id: m.action === 'link' ? m.person_id : null,
-          })),
-      });
+      };
+      const payload = noEdits
+        ? base
+        : {
+            ...base,
+            relationship: relationship.trim() || null,
+            tags: parseCsv(tags),
+            important_dates: suggestion.important_dates,
+            summary: summary.trim() || null,
+            birthdate: details.birthdate.trim() || null,
+            pronouns: details.pronouns.trim() || null,
+            job_title: details.job_title.trim() || null,
+            company: details.company.trim() || null,
+            location: details.location.trim() || null,
+            how_we_met: details.how_we_met.trim() || null,
+            likes: parseCsv(details.likes),
+            dislikes: parseCsv(details.dislikes),
+            mentioned_people: mentions
+              .filter((m) => m.action !== 'skip')
+              .map((m) => ({
+                action: m.action,
+                name: m.name,
+                relationship_to_subject: m.relationship_to_subject,
+                person_id: m.action === 'link' ? m.person_id : null,
+              })),
+          };
+      const person = await api.post('/api/ai/apply', payload);
       onApplied(person);
     } catch (err) {
       setError(err);
@@ -107,38 +115,45 @@ function SuggestionReview({ result, onCancel, onApplied }) {
   return (
     <Card className="space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="font-medium">Review &amp; file</h3>
-        <span className="text-xs text-slate-500">
-          {suggestion.person_match === 'existing' ? 'matched existing' : 'looks new'}
-        </span>
+        <h3 className="font-medium">
+          {lockedPerson ? `Update ${lockedPerson.name}` : 'Review & file'}
+        </h3>
+        {!lockedPerson && (
+          <span className="text-xs text-slate-500">
+            {suggestion.person_match === 'existing' ? 'matched existing' : 'looks new'}
+          </span>
+        )}
       </div>
 
-      <label className="block text-xs text-slate-400">
-        Person
-        <select
-          value={target}
-          onChange={(e) => setTarget(e.target.value)}
-          className="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-2 text-sm text-slate-100 focus:border-indigo-500 focus:outline-none"
-        >
-          <option value="new">+ New person</option>
-          {people.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
-      </label>
-
-      {isNew ? (
+      {!lockedPerson && (
         <label className="block text-xs text-slate-400">
-          Name
-          <TextInput value={name} onChange={(e) => setName(e.target.value)} />
+          Person
+          <select
+            value={target}
+            onChange={(e) => setTarget(e.target.value)}
+            className="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-2 text-sm text-slate-100 focus:border-indigo-500 focus:outline-none"
+          >
+            <option value="new">+ New person</option>
+            {people.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
         </label>
-      ) : (
-        <p className="text-xs text-slate-500">
-          Filing under <span className="text-slate-300">{matched?.name}</span>
-        </p>
       )}
+
+      {!lockedPerson &&
+        (isNew ? (
+          <label className="block text-xs text-slate-400">
+            Name
+            <TextInput value={name} onChange={(e) => setName(e.target.value)} />
+          </label>
+        ) : (
+          <p className="text-xs text-slate-500">
+            Filing under <span className="text-slate-300">{matched?.name}</span>
+          </p>
+        ))}
 
       <label className="block text-xs text-slate-400">
         Relationship
@@ -326,18 +341,24 @@ function SuggestionReview({ result, onCancel, onApplied }) {
 
       <ErrorNote error={error} />
       <div className="flex gap-2">
-        <Button onClick={confirm} disabled={busy || (isNew && !name.trim())}>
-          {busy ? 'Filing…' : 'Confirm'}
+        <Button onClick={() => confirm()} disabled={busy || (isNew && !name.trim())}>
+          {busy ? 'Saving…' : lockedPerson ? 'Update profile' : 'Confirm'}
         </Button>
-        <Button variant="ghost" onClick={onCancel} type="button">
-          Skip (leave in Inbox)
-        </Button>
+        {lockedPerson ? (
+          <Button variant="ghost" onClick={() => confirm({ noEdits: true })} type="button" disabled={busy}>
+            Save note only
+          </Button>
+        ) : (
+          <Button variant="ghost" onClick={onCancel} type="button">
+            Skip (leave in Inbox)
+          </Button>
+        )}
       </div>
     </Card>
   );
 }
 
-export default function SmartCapture({ aiAvailable, people, onSaved }) {
+export default function SmartCapture({ aiAvailable, people, lockedPerson, onSaved }) {
   const navigate = useNavigate();
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
@@ -350,6 +371,7 @@ export default function SmartCapture({ aiAvailable, people, onSaved }) {
     return (
       <QuickCapture
         people={people}
+        lockedPersonId={lockedPerson?.id}
         onSaved={(x) => {
           setManualFallback(false);
           onSaved?.(x);
@@ -362,6 +384,7 @@ export default function SmartCapture({ aiAvailable, people, onSaved }) {
     return (
       <SuggestionReview
         result={result}
+        lockedPerson={lockedPerson}
         onCancel={() => {
           setResult(null);
           onSaved?.({});
@@ -369,7 +392,7 @@ export default function SmartCapture({ aiAvailable, people, onSaved }) {
         onApplied={(person) => {
           setResult(null);
           onSaved?.({ personId: person.id });
-          navigate(`/people/${person.id}`);
+          if (!lockedPerson) navigate(`/people/${person.id}`);
         }}
       />
     );
@@ -409,12 +432,16 @@ export default function SmartCapture({ aiAvailable, people, onSaved }) {
         value={text}
         onChange={(e) => setText(e.target.value)}
         rows={3}
-        placeholder="Quick capture — what happened, what you learned…"
+        placeholder={
+          lockedPerson
+            ? `What's new with ${lockedPerson.name}?`
+            : 'Quick capture — what happened, what you learned…'
+        }
         className="w-full resize-y rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:border-indigo-500 focus:outline-none"
       />
       <div className="flex flex-wrap items-center gap-3">
         <Button type="submit" disabled={busy || !text.trim()}>
-          {busy ? 'Reading…' : 'Save & file with AI'}
+          {busy ? 'Reading…' : lockedPerson ? 'Save note using AI' : 'Save & file with AI'}
         </Button>
         <MicButton
           value={text}
