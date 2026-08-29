@@ -146,18 +146,40 @@ const TOOL = {
   },
 };
 
-function systemPrompt() {
-  return `You clean up and file short personal notes about people in someone's life.
-Today's date is ${new Date().toISOString().slice(0, 10)} — use it to resolve relative dates
+function systemPrompt(subject) {
+  const dateLine = `Today's date is ${new Date().toISOString().slice(0, 10)} — use it to resolve relative dates
 ("next week", "Nov 16", "her birthday") to concrete ISO dates. If a date's year is genuinely
-unknown (e.g. a birthday with no year), use 0000 for the year.
+unknown (e.g. a birthday with no year), use 0000 for the year.`;
+
+  const common = `Never invent facts that aren't supported by the note. Only fill a structured field
+(birthdate, pronouns, how_we_met, job_title, company, location, likes, dislikes) when the
+note clearly states it about the right person — otherwise leave it null or empty.
+Keep tags, likes, dislikes and facts short.
+When the note mentions OTHER people with an explicit tie ("her husband", "my manager Dana"),
+put them in mentioned_people; never fold their job/details into the main person's fields.`;
+
+  if (subject) {
+    return `You are updating the profile of ${subject.name} (id ${subject.id}) from a short note.
+${dateLine}
+
+Every top-level field (name, relationship_guess, tags, birthdate, pronouns, how_we_met,
+job_title, company, location, likes, dislikes, important_dates, facts, summary) must describe
+${subject.name} SPECIFICALLY. Set person_match to "existing" and matched_person_id to ${subject.id};
+keep name as "${subject.name}".
+If the note is actually about someone else (e.g. "Samantha is her sister and teaches at X"),
+that other person goes in mentioned_people with their relationship_to_subject, and you leave
+${subject.name}'s fields null/empty unless the note genuinely states something about ${subject.name}.
+The summary should be a revised rolling summary of ${subject.name} — if the note adds nothing
+about them, return their existing summary unchanged.
+${common}`;
+  }
+
+  return `You clean up and file short personal notes about people in someone's life.
+${dateLine}
 You are given the raw note plus a list of people already on file (id, name, aliases, relationship, short summary).
 Decide if the note is about one of those people (fuzzy-match names, nicknames, and context) or someone new,
 then extract structured details. Be conservative: only mark "existing" when you are fairly confident.
-Never invent facts that aren't supported by the note. Only fill a structured field
-(birthdate, pronouns, how_we_met, job_title, company, location, likes, dislikes) when the
-note clearly states it — otherwise leave it null or empty. Keep tags, likes, dislikes and
-facts short.`;
+${common}`;
 }
 
 function buildPeopleContext(people) {
@@ -180,16 +202,20 @@ function buildPeopleContext(people) {
 }
 
 /**
- * @param {{ rawText: string, people: Array<{id,name,aliases,relationship,summary}> }} args
+ * @param {object} args
+ * @param {string} args.rawText
+ * @param {Array<{id,name,aliases,relationship,summary}>} args.people
+ * @param {{id,name}|null} [args.subjectPerson]  when set, the note is being filed on this
+ *   person's profile — top-level fields must describe them, others go to mentioned_people
  * @returns {Promise<{ suggestion: object, usage: object }>}
  */
-export async function parseNote({ rawText, people }) {
+export async function parseNote({ rawText, people, subjectPerson = null }) {
   if (!client) throw new Error('ANTHROPIC_API_KEY not set');
 
   const msg = await client.messages.create({
     model: MODEL,
     max_tokens: 1024,
-    system: systemPrompt(),
+    system: systemPrompt(subjectPerson),
     tools: [TOOL],
     tool_choice: { type: 'tool', name: 'file_note' },
     messages: [
@@ -203,7 +229,11 @@ export async function parseNote({ rawText, people }) {
   const block = msg.content.find((b) => b.type === 'tool_use' && b.name === 'file_note');
   if (!block) throw new Error('AI did not return a structured result');
 
-  return { suggestion: promoteBirthday(normalize(block.input)), usage: msg.usage };
+  let suggestion = promoteBirthday(normalize(block.input));
+  if (subjectPerson) {
+    suggestion = { ...suggestion, person_match: 'existing', matched_person_id: subjectPerson.id };
+  }
+  return { suggestion, usage: msg.usage };
 }
 
 // If the model filed the birthday under important_dates instead of birthdate, move it.

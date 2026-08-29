@@ -407,6 +407,7 @@ export default function SmartCapture({ aiAvailable, people, lockedPerson, onSave
       const res = await api.post('/api/ai/parse', {
         raw_text: text.trim(),
         source: usedVoice ? 'voice' : 'manual',
+        ...(lockedPerson ? { for_person_id: lockedPerson.id } : {}),
       });
       setText('');
       setUsedVoice(false);

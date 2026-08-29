@@ -26,7 +26,7 @@ function mergeDates(current = [], incoming = []) {
 // Nothing about any person is changed yet; the client confirms via /api/ai/apply.
 router.post('/parse', async (req, res, next) => {
   try {
-    const { raw_text, source = 'manual' } = req.body;
+    const { raw_text, source = 'manual', for_person_id = null } = req.body;
     if (!raw_text || !raw_text.trim()) {
       return res.status(400).json({ error: 'raw_text is required' });
     }
@@ -34,6 +34,10 @@ router.post('/parse', async (req, res, next) => {
     const { data: people } = await pgrest('people', {
       query: { select: 'id,name,aliases,relationship,summary' },
     });
+
+    const subjectPerson = for_person_id
+      ? people.find((p) => p.id === for_person_id) || null
+      : null;
 
     const { data: noteRows } = await pgrest('notes', {
       method: 'POST',
@@ -44,7 +48,7 @@ router.post('/parse', async (req, res, next) => {
 
     let suggestion;
     try {
-      ({ suggestion } = await parseNote({ rawText: note.raw_text, people }));
+      ({ suggestion } = await parseNote({ rawText: note.raw_text, people, subjectPerson }));
     } catch (aiErr) {
       // Note is safely saved; let the client fall back to manual filing.
       return res.status(502).json({ error: `AI parse failed: ${aiErr.message}`, note });
