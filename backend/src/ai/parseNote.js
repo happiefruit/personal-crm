@@ -88,11 +88,16 @@ const TOOL = {
   },
 };
 
-const SYSTEM = `You clean up and file short personal notes about people in someone's life.
+function systemPrompt() {
+  return `You clean up and file short personal notes about people in someone's life.
+Today's date is ${new Date().toISOString().slice(0, 10)} — use it to resolve relative dates
+("next week", "Nov 16", "her birthday") to concrete ISO dates. If a date's year is genuinely
+unknown (e.g. a birthday with no year), use 0000 for the year.
 You are given the raw note plus a list of people already on file (id, name, aliases, relationship, short summary).
 Decide if the note is about one of those people (fuzzy-match names, nicknames, and context) or someone new,
 then extract structured details. Be conservative: only mark "existing" when you are fairly confident.
 Never invent facts that aren't supported by the note. Keep tags and facts short.`;
+}
 
 function buildPeopleContext(people) {
   if (!people?.length) return 'No people on file yet.';
@@ -123,7 +128,7 @@ export async function parseNote({ rawText, people }) {
   const msg = await client.messages.create({
     model: MODEL,
     max_tokens: 1024,
-    system: SYSTEM,
+    system: systemPrompt(),
     tools: [TOOL],
     tool_choice: { type: 'tool', name: 'file_note' },
     messages: [

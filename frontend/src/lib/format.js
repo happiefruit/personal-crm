@@ -1,5 +1,11 @@
 export function formatDate(iso) {
   if (!iso) return '';
+  // Year-less dates (e.g. a birthday) are stored as 0000-MM-DD.
+  const m = /^0000-(\d{2})-(\d{2})$/.exec(iso);
+  if (m) {
+    const d = new Date(2000, Number(m[1]) - 1, Number(m[2]));
+    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  }
   return new Date(iso).toLocaleDateString(undefined, {
     year: 'numeric',
     month: 'short',
