@@ -94,6 +94,18 @@ export default function QuickCapture({ people = [], lockedPersonId, onSaved }) {
           {busy ? 'Saving…' : 'Save note'}
         </Button>
         <MicButton onText={appendSpoken} onListeningChange={(on) => on && setUsedVoice(true)} />
+        {text && (
+          <button
+            type="button"
+            onClick={() => {
+              setText('');
+              setUsedVoice(false);
+            }}
+            className="text-xs text-slate-500 hover:text-slate-300"
+          >
+            clear
+          </button>
+        )}
         <ErrorNote error={error} />
       </div>
     </form>

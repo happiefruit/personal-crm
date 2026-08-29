@@ -420,6 +420,18 @@ export default function SmartCapture({ aiAvailable, people, onSaved }) {
           {busy ? 'Reading…' : 'Save & file with AI'}
         </Button>
         <MicButton onText={appendSpoken} onListeningChange={(on) => on && setUsedVoice(true)} />
+        {text && (
+          <button
+            type="button"
+            onClick={() => {
+              setText('');
+              setUsedVoice(false);
+            }}
+            className="text-xs text-slate-500 hover:text-slate-300"
+          >
+            clear
+          </button>
+        )}
         <button
           type="button"
           onClick={() => setManualFallback(true)}
