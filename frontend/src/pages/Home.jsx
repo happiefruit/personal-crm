@@ -3,7 +3,7 @@ import { api } from '../lib/api.js';
 import { useAsync } from '../lib/useAsync.js';
 import { daysSince, relativeTime } from '../lib/format.js';
 import { Card, Chip, ErrorNote, Spinner } from '../components/ui.jsx';
-import QuickCapture from '../components/QuickCapture.jsx';
+import SmartCapture from '../components/SmartCapture.jsx';
 
 const STALE_DAYS = 30;
 
@@ -23,7 +23,12 @@ function PersonRow({ person }) {
 }
 
 export default function Home() {
-  const { data: people, error, loading, reload } = useAsync(() => api.get('/api/people'), []);
+  const { data, error, loading, reload } = useAsync(
+    () => Promise.all([api.get('/api/people'), api.get('/api/health').catch(() => ({}))]),
+    [],
+  );
+  const people = data?.[0];
+  const aiAvailable = Boolean(data?.[1]?.ai_available);
 
   const recent = (people || []).filter((p) => p.last_contacted_at).slice(0, 5);
   const stale = (people || [])
@@ -34,7 +39,7 @@ export default function Home() {
     <div className="space-y-6">
       <Card>
         <h2 className="mb-2 font-medium">Quick capture</h2>
-        <QuickCapture people={people || []} onSaved={reload} />
+        <SmartCapture aiAvailable={aiAvailable} people={people || []} onSaved={reload} />
       </Card>
 
       <ErrorNote error={error} onRetry={reload} />

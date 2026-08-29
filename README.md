@@ -22,7 +22,8 @@ Following the build order in `spec.md`:
 - [x] **1. Scaffold** — frontend + backend skeleton, health check end-to-end, deploy config
 - [x] **2. CRM core** — people + notes CRUD, quick capture, list / detail / edit, inbox for unfiled notes
 - [x] **Auth** — shared-passcode gate on the API + lock screen (single-user private)
-- [ ] 3. AI parsing (Claude Haiku)
+- [x] **3. AI parsing** — Claude Haiku 4.5 turns a raw note into a person match + facts + summary; review-and-confirm before it's filed
+- [ ] 4. Reminders
 - [ ] 4. Reminders
 - [ ] 5. PWA setup
 - [ ] 6. Push notifications
@@ -90,6 +91,21 @@ API is open and logs a warning on every request.
 | POST | `/api/notes` | `{ raw_text*, person_id, source }` — bumps person's `last_contacted_at` |
 | PATCH | `/api/notes/:id` | reassign `person_id` / fix `raw_text` |
 | DELETE | `/api/notes/:id` | |
+| POST | `/api/ai/parse` | `{ raw_text }` → saves the note, returns `{ note, suggestion, people }`; changes nothing yet. 502 (note still saved) if the AI call fails. |
+| POST | `/api/ai/apply` | commit a reviewed suggestion → creates/updates the person, files the note, returns the person |
+
+### AI note parsing (step 3)
+
+`POST /api/ai/parse` sends the raw note + everyone on file (name, aliases,
+relationship, short summary) to **Claude Haiku 4.5** via a single forced tool
+call. It comes back with: existing-match vs new, a name, relationship guess,
+tags, important dates, extracted facts, a rewritten rolling summary, and an
+optional follow-up hint. The frontend shows this for review — you can fix the
+match or edit any field — then `POST /api/ai/apply` writes it. On apply against
+an existing person, tags and dates are merged (union), the summary is replaced
+with the AI's revised one, and the note is filed. Needs `ANTHROPIC_API_KEY`;
+without it `/api/ai/*` returns 503 and the capture box falls back to manual
+filing. `~$0.001–0.002` per note.
 
 ## Notes on the backend ↔ Supabase link
 
