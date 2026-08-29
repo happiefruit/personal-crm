@@ -22,6 +22,27 @@ function SuggestionReview({ result, onCancel, onApplied }) {
   const [relationship, setRelationship] = useState(suggestion.relationship_guess || '');
   const [tags, setTags] = useState(csv(suggestion.tags));
   const [summary, setSummary] = useState(suggestion.summary);
+  const [details, setDetails] = useState({
+    birthdate: suggestion.birthdate || '',
+    pronouns: suggestion.pronouns || '',
+    job_title: suggestion.job_title || '',
+    company: suggestion.company || '',
+    location: suggestion.location || '',
+    how_we_met: suggestion.how_we_met || '',
+    likes: csv(suggestion.likes),
+    dislikes: csv(suggestion.dislikes),
+  });
+  const hasDetails =
+    suggestion.birthdate ||
+    suggestion.pronouns ||
+    suggestion.job_title ||
+    suggestion.company ||
+    suggestion.location ||
+    suggestion.how_we_met ||
+    (suggestion.likes || []).length ||
+    (suggestion.dislikes || []).length;
+  const [showDetails, setShowDetails] = useState(Boolean(hasDetails));
+  const setDetail = (k, v) => setDetails((d) => ({ ...d, [k]: v }));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
 
@@ -41,6 +62,14 @@ function SuggestionReview({ result, onCancel, onApplied }) {
         tags: parseCsv(tags),
         important_dates: suggestion.important_dates,
         summary: summary.trim() || null,
+        birthdate: details.birthdate.trim() || null,
+        pronouns: details.pronouns.trim() || null,
+        job_title: details.job_title.trim() || null,
+        company: details.company.trim() || null,
+        location: details.location.trim() || null,
+        how_we_met: details.how_we_met.trim() || null,
+        likes: parseCsv(details.likes),
+        dislikes: parseCsv(details.dislikes),
       });
       onApplied(person);
     } catch (err) {
@@ -122,6 +151,83 @@ function SuggestionReview({ result, onCancel, onApplied }) {
           className="mt-1 w-full resize-y rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:border-indigo-500 focus:outline-none"
         />
       </label>
+
+      <button
+        type="button"
+        onClick={() => setShowDetails((v) => !v)}
+        className="text-xs text-indigo-400 hover:underline"
+      >
+        {showDetails ? 'Hide details' : 'More details'}
+        {!showDetails && hasDetails ? ' (AI found some)' : ''}
+      </button>
+
+      {showDetails && (
+        <div className="space-y-2 rounded-md border border-slate-800 p-3">
+          <div className="flex gap-2">
+            <label className="block flex-1 text-xs text-slate-400">
+              Birthday
+              <TextInput
+                type="date"
+                value={/^\d{4}-/.test(details.birthdate) && !details.birthdate.startsWith('0000') ? details.birthdate : ''}
+                onChange={(e) => setDetail('birthdate', e.target.value)}
+              />
+              {details.birthdate.startsWith('0000') && (
+                <span className="text-[11px] text-slate-500">
+                  {details.birthdate.slice(5)} (year unknown)
+                </span>
+              )}
+            </label>
+            <label className="block flex-1 text-xs text-slate-400">
+              Pronouns
+              <TextInput
+                value={details.pronouns}
+                onChange={(e) => setDetail('pronouns', e.target.value)}
+              />
+            </label>
+          </div>
+          <div className="flex gap-2">
+            <label className="block flex-1 text-xs text-slate-400">
+              Job title
+              <TextInput
+                value={details.job_title}
+                onChange={(e) => setDetail('job_title', e.target.value)}
+              />
+            </label>
+            <label className="block flex-1 text-xs text-slate-400">
+              Company
+              <TextInput
+                value={details.company}
+                onChange={(e) => setDetail('company', e.target.value)}
+              />
+            </label>
+          </div>
+          <label className="block text-xs text-slate-400">
+            Location
+            <TextInput
+              value={details.location}
+              onChange={(e) => setDetail('location', e.target.value)}
+            />
+          </label>
+          <label className="block text-xs text-slate-400">
+            How we met
+            <TextInput
+              value={details.how_we_met}
+              onChange={(e) => setDetail('how_we_met', e.target.value)}
+            />
+          </label>
+          <label className="block text-xs text-slate-400">
+            Likes
+            <TextInput value={details.likes} onChange={(e) => setDetail('likes', e.target.value)} />
+          </label>
+          <label className="block text-xs text-slate-400">
+            Dislikes
+            <TextInput
+              value={details.dislikes}
+              onChange={(e) => setDetail('dislikes', e.target.value)}
+            />
+          </label>
+        </div>
+      )}
 
       {suggestion.facts.length > 0 && (
         <div className="text-xs text-slate-500">

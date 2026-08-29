@@ -73,7 +73,18 @@ router.post('/apply', async (req, res, next) => {
       tags = [],
       important_dates = [],
       summary = null,
+      birthdate = null,
+      pronouns = null,
+      how_we_met = null,
+      job_title = null,
+      company = null,
+      location = null,
+      likes = [],
+      dislikes = [],
     } = req.body;
+
+    // Scalar contact fields: fill only when the person doesn't already have one.
+    const fillIfEmpty = { birthdate, pronouns, how_we_met, job_title, company, location };
 
     if (!note_id) return res.status(400).json({ error: 'note_id is required' });
 
@@ -88,16 +99,23 @@ router.post('/apply', async (req, res, next) => {
       if (!rows.length) return res.status(404).json({ error: 'matched person not found' });
       const existing = rows[0];
 
+      const patch = {
+        tags: uniq([...(existing.tags || []), ...tags]),
+        likes: uniq([...(existing.likes || []), ...likes]),
+        dislikes: uniq([...(existing.dislikes || []), ...dislikes]),
+        important_dates: mergeDates(existing.important_dates, important_dates),
+        relationship: existing.relationship || relationship,
+        summary: summary || existing.summary,
+        last_contacted_at: note.created_at,
+      };
+      for (const [k, v] of Object.entries(fillIfEmpty)) {
+        if (v && !existing[k]) patch[k] = v;
+      }
+
       const { data: updated } = await pgrest('people', {
         method: 'PATCH',
         query: { id: `eq.${existing.id}` },
-        body: {
-          tags: uniq([...(existing.tags || []), ...tags]),
-          important_dates: mergeDates(existing.important_dates, important_dates),
-          relationship: existing.relationship || relationship,
-          summary: summary || existing.summary,
-          last_contacted_at: note.created_at,
-        },
+        body: patch,
         prefer: 'return=representation',
       });
       person = updated[0];
@@ -109,9 +127,12 @@ router.post('/apply', async (req, res, next) => {
           name: name.trim(),
           relationship,
           tags: uniq(tags),
+          likes: uniq(likes),
+          dislikes: uniq(dislikes),
           important_dates,
           summary,
           last_contacted_at: note.created_at,
+          ...fillIfEmpty,
         },
         prefer: 'return=representation',
       });

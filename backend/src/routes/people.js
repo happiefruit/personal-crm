@@ -4,7 +4,22 @@ import { pgrest } from '../supabase.js';
 const router = Router();
 
 // Fields a client is allowed to set/change on a person.
-const WRITABLE = ['name', 'aliases', 'relationship', 'tags', 'summary', 'important_dates'];
+const WRITABLE = [
+  'name',
+  'aliases',
+  'relationship',
+  'tags',
+  'summary',
+  'important_dates',
+  'birthdate',
+  'pronouns',
+  'how_we_met',
+  'job_title',
+  'company',
+  'location',
+  'likes',
+  'dislikes',
+];
 
 function pick(body) {
   const out = {};

@@ -23,11 +23,13 @@ Following the build order in `spec.md`:
 - [x] **2. CRM core** — people + notes CRUD, quick capture, list / detail / edit, inbox for unfiled notes
 - [x] **Auth** — shared-passcode gate on the API + lock screen (single-user private)
 - [x] **3. AI parsing** — Claude Haiku 4.5 turns a raw note into a person match + facts + summary; review-and-confirm before it's filed
-- [ ] 4. Reminders
-- [ ] 4. Reminders
-- [ ] 5. PWA setup
-- [ ] 6. Push notifications
-- [ ] 7. Polish
+- [x] **4. Rich contact fields** — birthdate/age, pronouns, how-we-met, work, location, likes, dislikes; AI extracts them, merge is non-destructive
+- [ ] 5. Relationship links — typed person-to-person links with auto-inverse; AI suggests linked contacts
+- [ ] 6. Voice capture — in-browser speech-to-text into the capture box
+- [ ] 7. Reminders
+- [ ] 8. PWA setup
+- [ ] 9. Push notifications
+- [ ] 10. Polish
 
 ## Local development
 
@@ -83,7 +85,7 @@ API is open and logs a warning on every request.
 | GET | `/api/health` | backend + DB status (public) |
 | GET | `/api/auth/check` | 200 if the passcode is valid (used by the lock screen) |
 | GET | `/api/people` | list, most-recently-contacted first |
-| POST | `/api/people` | `{ name* , relationship, tags[], aliases[], summary, important_dates[] }` |
+| POST | `/api/people` | `{ name*, relationship, tags[], aliases[], summary, important_dates[], birthdate, pronouns, how_we_met, job_title, company, location, likes[], dislikes[] }` |
 | GET | `/api/people/:id` | profile + embedded `notes[]` timeline |
 | PATCH | `/api/people/:id` | any writable field |
 | DELETE | `/api/people/:id` | notes are kept, `person_id` set null |

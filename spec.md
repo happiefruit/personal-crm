@@ -35,8 +35,25 @@ Target platform: mobile-first responsive web app, installable as a PWA on your S
 | relationship | text | e.g. "friend", "coworker", "family" |
 | tags | text[] | freeform |
 | summary | text | AI-maintained rolling summary of who they are |
-| important_dates | jsonb | birthday, anniversary, etc. — `[{label, date}]` |
+| important_dates | jsonb | anniversary, etc. — `[{label, date}]` (birthday moved to its own field) |
+| birthdate | text | `YYYY-MM-DD`, or `0000-MM-DD` when the year is unknown; drives age + birthday reminders |
+| pronouns | text | |
+| how_we_met | text | |
+| job_title | text | |
+| company | text | |
+| location | text | city / area |
+| likes | text[] | things they enjoy |
+| dislikes | text[] | things they avoid |
 | last_contacted_at | timestamp | updated whenever a new note is filed against them |
+| created_at | timestamp | |
+
+### `relationships` (step 5)
+| Field | Type | Notes |
+|---|---|---|
+| id | uuid | PK |
+| from_person_id | uuid | FK → people |
+| to_person_id | uuid | FK → people |
+| type | text | what `to_person` is to `from_person` (spouse, parent, child, colleague…). Stored as two directed rows; inverse created automatically. |
 | created_at | timestamp | |
 
 ### `notes`
@@ -92,15 +109,19 @@ Target platform: mobile-first responsive web app, installable as a PWA on your S
 
 ---
 
-## 5. Build Order (suggested)
+## 5. Build Order
 
-1. **Scaffold**: React + Vite frontend, Express backend, Supabase project, deploy skeleton end-to-end — confirms hosting works before adding complexity
-2. **CRM core**: people + notes tables, manual capture form, list/detail views — no AI yet, just CRUD
-3. **AI parsing**: wire in Claude API (Haiku 4.5) for note → structured extraction + person matching
-4. **Reminders**: add reminders table, manual creation, and auto-creation from extracted dates
-5. **PWA setup**: manifest.json, service worker, installable on Samsung home screen
-6. **Push notifications**: VAPID setup, permission prompt, wire up reminder-due and re-engagement triggers
-7. **Polish**: refine AI prompts based on real use, improve dashboard/search
+1. **Scaffold**: React + Vite frontend, Express backend, Supabase project, deploy skeleton end-to-end — confirms hosting works before adding complexity ✅
+2. **CRM core**: people + notes tables, manual capture form, list/detail views — no AI yet, just CRUD ✅
+   - plus: shared-passcode auth gate (single-user private) ✅
+3. **AI parsing**: wire in Claude API (Haiku 4.5) for note → structured extraction + person matching ✅
+4. **Rich contact fields** (MonicaHQ-style): birthdate/age, pronouns, how-we-met, job/company, location, likes, dislikes — AI extracts, non-destructive merge ✅
+5. **Relationship links**: person↔person typed links (spouse, parent/child, colleague…) with automatic inverse; AI detects other people named in a note and offers to create + link them
+6. **Voice capture**: in-browser speech-to-text (Web Speech API) into the capture box
+7. **Reminders**: add reminders table, manual creation, and auto-creation from extracted dates
+8. **PWA setup**: manifest.json, service worker, installable on Samsung home screen
+9. **Push notifications**: VAPID setup, permission prompt, wire up reminder-due and re-engagement triggers
+10. **Polish**: refine AI prompts based on real use, improve dashboard/search
 
 ---
 

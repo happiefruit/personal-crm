@@ -36,6 +36,32 @@ const TOOL = {
         items: { type: 'string' },
         description: 'Short freeform tags implied by the note (interests, context). May be empty.',
       },
+      birthdate: {
+        type: ['string', 'null'],
+        description:
+          'Birthday as ISO YYYY-MM-DD. Use 0000 for the year when only month/day are known. null if not mentioned.',
+      },
+      pronouns: {
+        type: ['string', 'null'],
+        description: 'Pronouns or gender, only if the note makes them clear. Usually null.',
+      },
+      how_we_met: {
+        type: ['string', 'null'],
+        description: 'Short phrase on how the note-writer knows this person, if stated. Usually null.',
+      },
+      job_title: { type: ['string', 'null'], description: 'Their role/title, if stated.' },
+      company: { type: ['string', 'null'], description: 'Where they work, if stated.' },
+      location: { type: ['string', 'null'], description: 'City/area they live in, if stated.' },
+      likes: {
+        type: 'array',
+        items: { type: 'string' },
+        description: 'Things they like/enjoy, stated in the note. Short items. May be empty.',
+      },
+      dislikes: {
+        type: 'array',
+        items: { type: 'string' },
+        description: 'Things they dislike/avoid, stated in the note. May be empty.',
+      },
       important_dates: {
         type: 'array',
         items: {
@@ -80,6 +106,14 @@ const TOOL = {
       'name',
       'relationship_guess',
       'tags',
+      'birthdate',
+      'pronouns',
+      'how_we_met',
+      'job_title',
+      'company',
+      'location',
+      'likes',
+      'dislikes',
       'important_dates',
       'facts',
       'summary',
@@ -96,7 +130,10 @@ unknown (e.g. a birthday with no year), use 0000 for the year.
 You are given the raw note plus a list of people already on file (id, name, aliases, relationship, short summary).
 Decide if the note is about one of those people (fuzzy-match names, nicknames, and context) or someone new,
 then extract structured details. Be conservative: only mark "existing" when you are fairly confident.
-Never invent facts that aren't supported by the note. Keep tags and facts short.`;
+Never invent facts that aren't supported by the note. Only fill a structured field
+(birthdate, pronouns, how_we_met, job_title, company, location, likes, dislikes) when the
+note clearly states it — otherwise leave it null or empty. Keep tags, likes, dislikes and
+facts short.`;
 }
 
 function buildPeopleContext(people) {
@@ -142,19 +179,39 @@ export async function parseNote({ rawText, people }) {
   const block = msg.content.find((b) => b.type === 'tool_use' && b.name === 'file_note');
   if (!block) throw new Error('AI did not return a structured result');
 
-  return { suggestion: normalize(block.input), usage: msg.usage };
+  return { suggestion: promoteBirthday(normalize(block.input)), usage: msg.usage };
+}
+
+// If the model filed the birthday under important_dates instead of birthdate, move it.
+function promoteBirthday(s) {
+  if (s.birthdate) return s;
+  const i = s.important_dates.findIndex((d) => /\bbirth\s*day\b|\bbirthday\b/i.test(d.label));
+  if (i === -1) return s;
+  const [bd] = s.important_dates.splice(i, 1);
+  return { ...s, birthdate: bd.date };
 }
 
 // Defensive coercion — never trust the shape completely.
 function normalize(raw) {
   const s = raw || {};
   const validId = s.person_match === 'existing' && typeof s.matched_person_id === 'string';
+  const str = (v) => (v == null || String(v).trim() === '' ? null : String(v).trim());
+  const list = (v) =>
+    Array.isArray(v) ? v.map(String).map((x) => x.trim()).filter(Boolean) : [];
   return {
     person_match: s.person_match === 'existing' ? 'existing' : 'new',
     matched_person_id: validId ? s.matched_person_id : null,
     name: String(s.name || '').trim(),
     relationship_guess: s.relationship_guess ? String(s.relationship_guess).trim() : null,
-    tags: Array.isArray(s.tags) ? s.tags.map(String).map((t) => t.trim()).filter(Boolean) : [],
+    tags: list(s.tags),
+    birthdate: str(s.birthdate),
+    pronouns: str(s.pronouns),
+    how_we_met: str(s.how_we_met),
+    job_title: str(s.job_title),
+    company: str(s.company),
+    location: str(s.location),
+    likes: list(s.likes),
+    dislikes: list(s.dislikes),
     important_dates: Array.isArray(s.important_dates)
       ? s.important_dates
           .filter((d) => d && d.label && d.date)

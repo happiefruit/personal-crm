@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { api } from '../lib/api.js';
 import { useAsync } from '../lib/useAsync.js';
-import { formatDate, formatDateTime, relativeTime } from '../lib/format.js';
+import { computeAge, formatDate, formatDateTime, relativeTime } from '../lib/format.js';
 import { Button, Card, Chip, ErrorNote, Spinner, TextInput } from '../components/ui.jsx';
 import QuickCapture from '../components/QuickCapture.jsx';
 
@@ -13,7 +13,45 @@ const parseCsv = (s) =>
     .map((x) => x.trim())
     .filter(Boolean);
 
+// birthdate <-> form: store "YYYY-MM-DD" or "0000-MM-DD" (year unknown)
+function splitBirthdate(bd) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(bd || '');
+  if (!m) return { date: '', yearUnknown: false };
+  if (m[1] === '0000') return { date: `2000-${m[2]}-${m[3]}`, yearUnknown: true };
+  return { date: bd, yearUnknown: false };
+}
+function joinBirthdate({ date, yearUnknown }) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date || '');
+  if (!m) return null;
+  return yearUnknown ? `0000-${m[2]}-${m[3]}` : date;
+}
+
+function Facts({ person }) {
+  const rows = [];
+  if (person.birthdate) {
+    const age = computeAge(person.birthdate);
+    rows.push(['Birthday', `${formatDate(person.birthdate)}${age != null ? ` · age ${age}` : ''}`]);
+  }
+  if (person.pronouns) rows.push(['Pronouns', person.pronouns]);
+  const work = [person.job_title, person.company].filter(Boolean).join(' at ');
+  if (work) rows.push(['Work', work]);
+  if (person.location) rows.push(['Location', person.location]);
+  if (person.how_we_met) rows.push(['How we met', person.how_we_met]);
+  if (!rows.length) return null;
+  return (
+    <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
+      {rows.map(([k, v]) => (
+        <div key={k} className="contents">
+          <dt className="text-slate-500">{k}</dt>
+          <dd className="text-slate-300">{v}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
 function EditForm({ person, onCancel, onSaved }) {
+  const bd = splitBirthdate(person.birthdate);
   const [form, setForm] = useState({
     name: person.name,
     relationship: person.relationship || '',
@@ -21,6 +59,15 @@ function EditForm({ person, onCancel, onSaved }) {
     tags: csv(person.tags),
     aliases: csv(person.aliases),
     important_dates: person.important_dates || [],
+    birthdate: bd.date,
+    birthdateYearUnknown: bd.yearUnknown,
+    pronouns: person.pronouns || '',
+    how_we_met: person.how_we_met || '',
+    job_title: person.job_title || '',
+    company: person.company || '',
+    location: person.location || '',
+    likes: csv(person.likes),
+    dislikes: csv(person.dislikes),
   });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
@@ -43,6 +90,17 @@ function EditForm({ person, onCancel, onSaved }) {
         tags: parseCsv(form.tags),
         aliases: parseCsv(form.aliases),
         important_dates: form.important_dates.filter((d) => d.label && d.date),
+        birthdate: joinBirthdate({
+          date: form.birthdate,
+          yearUnknown: form.birthdateYearUnknown,
+        }),
+        pronouns: form.pronouns.trim() || null,
+        how_we_met: form.how_we_met.trim() || null,
+        job_title: form.job_title.trim() || null,
+        company: form.company.trim() || null,
+        location: form.location.trim() || null,
+        likes: parseCsv(form.likes),
+        dislikes: parseCsv(form.dislikes),
       });
       onSaved(updated);
     } catch (err) {
@@ -82,6 +140,57 @@ function EditForm({ person, onCancel, onSaved }) {
       <label className="block text-xs text-slate-400">
         Aliases (comma-separated)
         <TextInput value={form.aliases} onChange={(e) => set('aliases', e.target.value)} />
+      </label>
+
+      <div className="text-xs text-slate-400">
+        Birthday
+        <div className="mt-1 flex items-center gap-3">
+          <TextInput
+            type="date"
+            value={form.birthdate}
+            onChange={(e) => set('birthdate', e.target.value)}
+            className="max-w-[11rem]"
+          />
+          <label className="flex items-center gap-1.5 text-slate-400">
+            <input
+              type="checkbox"
+              checked={form.birthdateYearUnknown}
+              onChange={(e) => set('birthdateYearUnknown', e.target.checked)}
+            />
+            year unknown
+          </label>
+        </div>
+      </div>
+
+      <label className="block text-xs text-slate-400">
+        Pronouns
+        <TextInput value={form.pronouns} onChange={(e) => set('pronouns', e.target.value)} />
+      </label>
+      <div className="flex gap-2">
+        <label className="block flex-1 text-xs text-slate-400">
+          Job title
+          <TextInput value={form.job_title} onChange={(e) => set('job_title', e.target.value)} />
+        </label>
+        <label className="block flex-1 text-xs text-slate-400">
+          Company
+          <TextInput value={form.company} onChange={(e) => set('company', e.target.value)} />
+        </label>
+      </div>
+      <label className="block text-xs text-slate-400">
+        Location
+        <TextInput value={form.location} onChange={(e) => set('location', e.target.value)} />
+      </label>
+      <label className="block text-xs text-slate-400">
+        How we met
+        <TextInput value={form.how_we_met} onChange={(e) => set('how_we_met', e.target.value)} />
+      </label>
+      <label className="block text-xs text-slate-400">
+        Likes (comma-separated)
+        <TextInput value={form.likes} onChange={(e) => set('likes', e.target.value)} />
+      </label>
+      <label className="block text-xs text-slate-400">
+        Dislikes (comma-separated)
+        <TextInput value={form.dislikes} onChange={(e) => set('dislikes', e.target.value)} />
       </label>
 
       <div className="text-xs text-slate-400">
@@ -209,6 +318,29 @@ export default function Person() {
 
           {(person.aliases || []).length > 0 && (
             <p className="text-xs text-slate-500">a.k.a. {person.aliases.join(', ')}</p>
+          )}
+
+          <Facts person={person} />
+
+          {(person.likes || []).length > 0 && (
+            <div className="text-xs text-slate-400">
+              Likes
+              <div className="mt-1 flex flex-wrap gap-1.5">
+                {person.likes.map((x) => (
+                  <Chip key={x}>{x}</Chip>
+                ))}
+              </div>
+            </div>
+          )}
+          {(person.dislikes || []).length > 0 && (
+            <div className="text-xs text-slate-400">
+              Dislikes
+              <div className="mt-1 flex flex-wrap gap-1.5">
+                {person.dislikes.map((x) => (
+                  <Chip key={x}>{x}</Chip>
+                ))}
+              </div>
+            </div>
           )}
 
           {(person.important_dates || []).length > 0 && (

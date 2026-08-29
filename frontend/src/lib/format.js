@@ -41,3 +41,17 @@ export function daysSince(iso) {
   if (!iso) return Infinity;
   return (Date.now() - new Date(iso).getTime()) / 86_400_000;
 }
+
+/** Age in whole years from a YYYY-MM-DD birthdate; null if year unknown or unparseable. */
+export function computeAge(birthdate) {
+  if (!birthdate) return null;
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(birthdate);
+  if (!m || m[1] === '0000') return null;
+  const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  const now = new Date();
+  let age = now.getFullYear() - y;
+  const hadBirthday =
+    now.getMonth() + 1 > mo || (now.getMonth() + 1 === mo && now.getDate() >= d);
+  if (!hadBirthday) age -= 1;
+  return age >= 0 && age < 150 ? age : null;
+}
