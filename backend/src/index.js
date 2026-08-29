@@ -8,6 +8,7 @@ import { aiConfigured } from './ai/parseNote.js';
 import peopleRouter from './routes/people.js';
 import notesRouter from './routes/notes.js';
 import aiRouter from './routes/ai.js';
+import relationshipsRouter from './routes/relationships.js';
 
 const app = express();
 app.set('trust proxy', 1); // Railway/Render sit behind a proxy; needed for req.ip
@@ -56,6 +57,7 @@ app.get('/api/auth/check', (_req, res) => res.json({ ok: true }));
 app.use('/api/people', peopleRouter);
 app.use('/api/notes', notesRouter);
 app.use('/api/ai', aiRouter);
+app.use('/api/relationships', relationshipsRouter);
 
 // eslint-disable-next-line no-unused-vars
 app.use((err, _req, res, _next) => {

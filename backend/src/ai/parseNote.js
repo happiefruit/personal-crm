@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { TYPES, isValidType } from '../relationshipTypes.js';
 
 export const aiConfigured = Boolean(process.env.ANTHROPIC_API_KEY);
 
@@ -86,6 +87,28 @@ const TOOL = {
           "Rewritten rolling summary of who this person is, folding in the new facts. " +
           '2-4 sentences. If updating an existing person, revise their current summary rather than replacing it wholesale.',
       },
+      mentioned_people: {
+        type: 'array',
+        description:
+          'OTHER people named in the note whose tie to the main person is explicit ' +
+          '("her husband Marco", "my manager Dana"). Do not include the main person. Usually empty.',
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          properties: {
+            name: { type: 'string' },
+            relationship_to_subject: {
+              type: ['string', 'null'],
+              description: `What this person is to the main person. One of: ${TYPES.join(', ')}. null if unclear.`,
+            },
+            matched_person_id: {
+              type: ['string', 'null'],
+              description: 'id from the people-on-file list if this is clearly one of them, else null.',
+            },
+          },
+          required: ['name', 'relationship_to_subject', 'matched_person_id'],
+        },
+      },
       reminder_suggestion: {
         type: ['object', 'null'],
         additionalProperties: false,
@@ -117,6 +140,7 @@ const TOOL = {
       'important_dates',
       'facts',
       'summary',
+      'mentioned_people',
       'reminder_suggestion',
     ],
   },
@@ -219,6 +243,17 @@ function normalize(raw) {
       : [],
     facts: Array.isArray(s.facts) ? s.facts.map(String).map((f) => f.trim()).filter(Boolean) : [],
     summary: String(s.summary || '').trim(),
+    mentioned_people: Array.isArray(s.mentioned_people)
+      ? s.mentioned_people
+          .filter((m) => m && m.name && String(m.name).trim())
+          .map((m) => ({
+            name: String(m.name).trim(),
+            relationship_to_subject: isValidType(m.relationship_to_subject)
+              ? m.relationship_to_subject
+              : null,
+            matched_person_id: typeof m.matched_person_id === 'string' ? m.matched_person_id : null,
+          }))
+      : [],
     reminder_suggestion:
       s.reminder_suggestion && s.reminder_suggestion.message
         ? {

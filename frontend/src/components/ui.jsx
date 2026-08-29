@@ -44,6 +44,42 @@ export function Button({ className = '', variant = 'primary', ...props }) {
   );
 }
 
+import { useSpeech } from '../lib/useSpeech.js';
+
+/**
+ * Mic toggle for dictation. Renders nothing where the browser has no speech API.
+ * @param {(chunk: string) => void} props.onText  called with each finalized phrase
+ */
+export function MicButton({ onText, onListeningChange }) {
+  const { supported, listening, error, start, stop } = useSpeech(onText);
+  if (!supported) return null;
+
+  function toggle() {
+    const next = !listening;
+    if (next) start();
+    else stop();
+    onListeningChange?.(next);
+  }
+
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <button
+        type="button"
+        onClick={toggle}
+        title={listening ? 'Stop dictation' : 'Dictate'}
+        className={`rounded-md border px-2 py-1.5 text-sm ${
+          listening
+            ? 'animate-pulse border-red-500 bg-red-950/50 text-red-300'
+            : 'border-slate-700 text-slate-300 hover:bg-slate-800'
+        }`}
+      >
+        {listening ? '● Listening' : '🎤'}
+      </button>
+      {error && <span className="text-xs text-red-400">{error}</span>}
+    </span>
+  );
+}
+
 export function TextInput(props) {
   return (
     <input

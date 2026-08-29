@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { pgrest } from '../supabase.js';
+import { linksForPerson } from '../relationships.js';
 
 const router = Router();
 
@@ -53,7 +54,9 @@ router.get('/:id', async (req, res, next) => {
       },
     });
     if (!data.length) return res.status(404).json({ error: 'person not found' });
-    res.json(data[0]);
+    const person = data[0];
+    person.relationships = await linksForPerson(person.id);
+    res.json(person);
   } catch (err) {
     next(err);
   }

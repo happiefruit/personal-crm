@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api.js';
-import { Button, Card, Chip, ErrorNote, TextInput } from './ui.jsx';
+import { Button, Card, Chip, ErrorNote, MicButton, TextInput } from './ui.jsx';
 import QuickCapture from './QuickCapture.jsx';
 
 const csv = (arr) => (arr || []).join(', ');
@@ -10,6 +10,11 @@ const parseCsv = (s) =>
     .split(',')
     .map((x) => x.trim())
     .filter(Boolean);
+
+const REL_TYPES = [
+  'spouse', 'partner', 'ex', 'sibling', 'friend', 'colleague', 'relative',
+  'parent', 'child', 'grandparent', 'grandchild', 'manager', 'report',
+];
 
 function SuggestionReview({ result, onCancel, onApplied }) {
   const { note, suggestion, people } = result;
@@ -43,6 +48,18 @@ function SuggestionReview({ result, onCancel, onApplied }) {
     (suggestion.dislikes || []).length;
   const [showDetails, setShowDetails] = useState(Boolean(hasDetails));
   const setDetail = (k, v) => setDetails((d) => ({ ...d, [k]: v }));
+
+  const [mentions, setMentions] = useState(
+    (suggestion.mentioned_people || []).map((m) => ({
+      name: m.name,
+      relationship_to_subject: m.relationship_to_subject || 'friend',
+      person_id: m.matched_person_id || '',
+      action: m.matched_person_id ? 'link' : m.relationship_to_subject ? 'create' : 'skip',
+    })),
+  );
+  const setMention = (i, patch) =>
+    setMentions((ms) => ms.map((m, j) => (j === i ? { ...m, ...patch } : m)));
+
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
 
@@ -70,6 +87,14 @@ function SuggestionReview({ result, onCancel, onApplied }) {
         how_we_met: details.how_we_met.trim() || null,
         likes: parseCsv(details.likes),
         dislikes: parseCsv(details.dislikes),
+        mentioned_people: mentions
+          .filter((m) => m.action !== 'skip')
+          .map((m) => ({
+            action: m.action,
+            name: m.name,
+            relationship_to_subject: m.relationship_to_subject,
+            person_id: m.action === 'link' ? m.person_id : null,
+          })),
       });
       onApplied(person);
     } catch (err) {
@@ -235,6 +260,63 @@ function SuggestionReview({ result, onCancel, onApplied }) {
         </div>
       )}
 
+      {mentions.length > 0 && (
+        <div className="space-y-2 rounded-md border border-slate-800 p-3">
+          <p className="text-xs font-medium text-slate-300">People mentioned</p>
+          {mentions.map((m, i) => (
+            <div key={i} className="space-y-1.5 border-t border-slate-800 pt-2 first:border-0 first:pt-0">
+              <div className="flex items-center gap-2 text-sm">
+                <span className="text-slate-200">{m.name}</span>
+                <span className="text-xs text-slate-500">
+                  — {name || 'this person'}&rsquo;s
+                </span>
+                <select
+                  value={m.relationship_to_subject}
+                  onChange={(e) => setMention(i, { relationship_to_subject: e.target.value })}
+                  className="rounded border border-slate-700 bg-slate-950 px-1.5 py-1 text-xs text-slate-100 focus:outline-none"
+                >
+                  {REL_TYPES.map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex gap-1.5 text-xs">
+                {['create', 'link', 'skip'].map((a) => (
+                  <button
+                    key={a}
+                    type="button"
+                    onClick={() => setMention(i, { action: a })}
+                    className={`rounded px-2 py-1 ${
+                      m.action === a
+                        ? 'bg-indigo-600 text-white'
+                        : 'border border-slate-700 text-slate-400'
+                    }`}
+                  >
+                    {a === 'create' ? 'Create & link' : a === 'link' ? 'Link existing' : 'Skip'}
+                  </button>
+                ))}
+                {m.action === 'link' && (
+                  <select
+                    value={m.person_id}
+                    onChange={(e) => setMention(i, { person_id: e.target.value })}
+                    className="rounded border border-slate-700 bg-slate-950 px-1.5 py-1 text-slate-100 focus:outline-none"
+                  >
+                    <option value="">choose…</option>
+                    {people.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {suggestion.reminder_suggestion && (
         <p className="rounded-md bg-slate-800/60 px-3 py-2 text-xs text-slate-400">
           💡 Possible follow-up: “{suggestion.reminder_suggestion.message}” (
@@ -262,6 +344,10 @@ export default function SmartCapture({ aiAvailable, people, onSaved }) {
   const [error, setError] = useState(null);
   const [result, setResult] = useState(null); // { note, suggestion, people }
   const [manualFallback, setManualFallback] = useState(false);
+  const [usedVoice, setUsedVoice] = useState(false);
+
+  const appendSpoken = (chunk) =>
+    setText((t) => (t ? `${t} ${chunk}` : chunk));
 
   if (!aiAvailable || manualFallback) {
     return (
@@ -298,8 +384,12 @@ export default function SmartCapture({ aiAvailable, people, onSaved }) {
     setBusy(true);
     setError(null);
     try {
-      const res = await api.post('/api/ai/parse', { raw_text: text.trim() });
+      const res = await api.post('/api/ai/parse', {
+        raw_text: text.trim(),
+        source: usedVoice ? 'voice' : 'manual',
+      });
       setText('');
+      setUsedVoice(false);
       setResult(res);
     } catch (err) {
       // 502 => note was saved but the AI failed; drop to manual filing.
@@ -325,10 +415,11 @@ export default function SmartCapture({ aiAvailable, people, onSaved }) {
         placeholder="Quick capture — what happened, what you learned…"
         className="w-full resize-y rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:border-indigo-500 focus:outline-none"
       />
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <Button type="submit" disabled={busy || !text.trim()}>
           {busy ? 'Reading…' : 'Save & file with AI'}
         </Button>
+        <MicButton onText={appendSpoken} onListeningChange={(on) => on && setUsedVoice(true)} />
         <button
           type="button"
           onClick={() => setManualFallback(true)}

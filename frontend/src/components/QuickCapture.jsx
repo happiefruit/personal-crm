@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { api } from '../lib/api.js';
-import { Button, ErrorNote, TextInput } from './ui.jsx';
+import { Button, ErrorNote, MicButton, TextInput } from './ui.jsx';
 
 const NEW = '__new__';
 const UNFILED = '';
@@ -18,6 +18,8 @@ export default function QuickCapture({ people = [], lockedPersonId, onSaved }) {
   const [newName, setNewName] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
+  const [usedVoice, setUsedVoice] = useState(false);
+  const appendSpoken = (chunk) => setText((t) => (t ? `${t} ${chunk}` : chunk));
 
   async function submit(e) {
     e.preventDefault();
@@ -33,9 +35,14 @@ export default function QuickCapture({ people = [], lockedPersonId, onSaved }) {
         personId = person.id;
       }
 
-      const note = await api.post('/api/notes', { raw_text: text.trim(), person_id: personId });
+      const note = await api.post('/api/notes', {
+        raw_text: text.trim(),
+        person_id: personId,
+        source: usedVoice ? 'voice' : 'manual',
+      });
       setText('');
       setNewName('');
+      setUsedVoice(false);
       if (!lockedPersonId) setTarget(UNFILED);
       onSaved?.({ note, personId });
     } catch (err) {
@@ -82,10 +89,11 @@ export default function QuickCapture({ people = [], lockedPersonId, onSaved }) {
         </div>
       )}
 
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <Button type="submit" disabled={busy || !text.trim()}>
           {busy ? 'Saving…' : 'Save note'}
         </Button>
+        <MicButton onText={appendSpoken} onListeningChange={(on) => on && setUsedVoice(true)} />
         <ErrorNote error={error} />
       </div>
     </form>

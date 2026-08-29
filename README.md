@@ -24,8 +24,8 @@ Following the build order in `spec.md`:
 - [x] **Auth** — shared-passcode gate on the API + lock screen (single-user private)
 - [x] **3. AI parsing** — Claude Haiku 4.5 turns a raw note into a person match + facts + summary; review-and-confirm before it's filed
 - [x] **4. Rich contact fields** — birthdate/age, pronouns, how-we-met, work, location, likes, dislikes; AI extracts them, merge is non-destructive
-- [ ] 5. Relationship links — typed person-to-person links with auto-inverse; AI suggests linked contacts
-- [ ] 6. Voice capture — in-browser speech-to-text into the capture box
+- [x] **5. Relationship links** — typed person-to-person links with auto-inverse; AI detects people named in a note and offers to create + link them
+- [x] **6. Voice capture** — in-browser speech-to-text (Web Speech API) into the capture box
 - [ ] 7. Reminders
 - [ ] 8. PWA setup
 - [ ] 9. Push notifications
@@ -94,7 +94,27 @@ API is open and logs a warning on every request.
 | PATCH | `/api/notes/:id` | reassign `person_id` / fix `raw_text` |
 | DELETE | `/api/notes/:id` | |
 | POST | `/api/ai/parse` | `{ raw_text }` → saves the note, returns `{ note, suggestion, people }`; changes nothing yet. 502 (note still saved) if the AI call fails. |
-| POST | `/api/ai/apply` | commit a reviewed suggestion → creates/updates the person, files the note, returns the person |
+| POST | `/api/ai/apply` | commit a reviewed suggestion → creates/updates the person, files the note, links any confirmed mentioned people, returns the person |
+| GET | `/api/relationships/types` | allowed link types |
+| POST | `/api/relationships` | `{ from_person_id, to_person_id, type }` → creates the link + its inverse |
+| DELETE | `/api/relationships/:id` | removes both directions |
+
+### Relationship links (step 5)
+
+`type` describes what `to_person` is to `from_person` ("spouse", "parent",
+"child", "colleague"…). Stored as two directed rows; the inverse
+(parent↔child, manager↔report, sibling↔sibling…) is created and deleted
+automatically. `GET /api/people/:id` returns `relationships: [{ id, type,
+person: {id, name} }]`. The AI parser returns `mentioned_people` — others named
+in a note with an explicit tie — and the review card lets you create+link,
+link to an existing contact, or skip each.
+
+### Voice capture (step 6)
+
+`frontend/src/lib/useSpeech.js` wraps the Web Speech API. A mic button on the
+capture boxes (hidden where the browser lacks it) streams finalized phrases into
+the textarea; the note is saved with `source: 'voice'`. Works in Chrome / Samsung
+Internet on Android.
 
 ### AI note parsing (step 3)
 

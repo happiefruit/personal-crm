@@ -26,6 +26,125 @@ function joinBirthdate({ date, yearUnknown }) {
   return yearUnknown ? `0000-${m[2]}-${m[3]}` : date;
 }
 
+const REL_TYPES = [
+  'spouse', 'partner', 'ex', 'sibling', 'friend', 'colleague', 'relative',
+  'parent', 'child', 'grandparent', 'grandchild', 'manager', 'report',
+];
+const REL_LABEL = {
+  spouse: 'Spouse', partner: 'Partner', ex: 'Ex', sibling: 'Sibling', friend: 'Friend',
+  colleague: 'Colleague', relative: 'Relative', parent: 'Parent', child: 'Child',
+  grandparent: 'Grandparent', grandchild: 'Grandchild', manager: 'Manager', report: 'Report',
+};
+
+function Relationships({ person, allPeople, onChange }) {
+  const [adding, setAdding] = useState(false);
+  const [toId, setToId] = useState('');
+  const [type, setType] = useState('friend');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+
+  const links = person.relationships || [];
+  const candidates = allPeople.filter((p) => p.id !== person.id);
+
+  async function add() {
+    if (!toId) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await api.post('/api/relationships', {
+        from_person_id: person.id,
+        to_person_id: toId,
+        type,
+      });
+      setAdding(false);
+      setToId('');
+      onChange();
+    } catch (err) {
+      setError(err);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function remove(linkId) {
+    await api.del(`/api/relationships/${linkId}`);
+    onChange();
+  }
+
+  return (
+    <Card className="space-y-2">
+      <div className="flex items-center justify-between">
+        <h3 className="font-medium">Relationships</h3>
+        {!adding && candidates.length > 0 && (
+          <Button variant="ghost" onClick={() => setAdding(true)}>
+            + Add
+          </Button>
+        )}
+      </div>
+
+      {links.length === 0 && !adding && (
+        <p className="text-sm text-slate-500">No links yet.</p>
+      )}
+
+      <ul className="divide-y divide-slate-800">
+        {links.map((l) => (
+          <li key={l.id} className="flex items-center justify-between py-1.5 text-sm">
+            <span>
+              <span className="text-slate-500">{REL_LABEL[l.type] || l.type}: </span>
+              <Link to={`/people/${l.person.id}`} className="text-indigo-400 hover:underline">
+                {l.person.name}
+              </Link>
+            </span>
+            <button onClick={() => remove(l.id)} className="text-xs text-slate-500 hover:text-red-400">
+              ✕
+            </button>
+          </li>
+        ))}
+      </ul>
+
+      {adding && (
+        <div className="space-y-2 rounded-md border border-slate-800 p-2">
+          <select
+            value={toId}
+            onChange={(e) => setToId(e.target.value)}
+            className="w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-1.5 text-sm text-slate-100 focus:border-indigo-500 focus:outline-none"
+          >
+            <option value="">Choose a person…</option>
+            {candidates.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-slate-500">&mdash; {person.name}&rsquo;s</span>
+            <select
+              value={type}
+              onChange={(e) => setType(e.target.value)}
+              className="rounded-md border border-slate-700 bg-slate-950 px-2 py-1.5 text-sm text-slate-100 focus:border-indigo-500 focus:outline-none"
+            >
+              {REL_TYPES.map((t) => (
+                <option key={t} value={t}>
+                  {REL_LABEL[t]}
+                </option>
+              ))}
+            </select>
+          </div>
+          <ErrorNote error={error} />
+          <div className="flex gap-2">
+            <Button onClick={add} disabled={busy || !toId}>
+              {busy ? 'Linking…' : 'Link'}
+            </Button>
+            <Button variant="ghost" onClick={() => setAdding(false)} type="button">
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
+    </Card>
+  );
+}
+
 function Facts({ person }) {
   const rows = [];
   if (person.birthdate) {
@@ -245,10 +364,12 @@ function EditForm({ person, onCancel, onSaved }) {
 export default function Person() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { data: person, error, loading, reload, setData } = useAsync(
-    () => api.get(`/api/people/${id}`),
+  const { data, error, loading, reload, setData } = useAsync(
+    () => Promise.all([api.get(`/api/people/${id}`), api.get('/api/people')]),
     [id],
   );
+  const person = data?.[0];
+  const allPeople = data?.[1] || [];
   const [editing, setEditing] = useState(false);
 
   async function removePerson() {
@@ -280,7 +401,7 @@ export default function Person() {
           person={person}
           onCancel={() => setEditing(false)}
           onSaved={(updated) => {
-            setData({ ...person, ...updated });
+            setData([{ ...person, ...updated }, allPeople]);
             setEditing(false);
           }}
         />
@@ -353,6 +474,10 @@ export default function Person() {
             </ul>
           )}
         </Card>
+      )}
+
+      {!editing && (
+        <Relationships person={person} allPeople={allPeople} onChange={reload} />
       )}
 
       <Card>

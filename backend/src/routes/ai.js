@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { pgrest } from '../supabase.js';
 import { parseNote, aiConfigured } from '../ai/parseNote.js';
+import { createLink } from '../relationships.js';
+import { isValidType } from '../relationshipTypes.js';
 
 const router = Router();
 
@@ -81,6 +83,7 @@ router.post('/apply', async (req, res, next) => {
       location = null,
       likes = [],
       dislikes = [],
+      mentioned_people = [],
     } = req.body;
 
     // Scalar contact fields: fill only when the person doesn't already have one.
@@ -144,6 +147,28 @@ router.post('/apply', async (req, res, next) => {
       query: { id: `eq.${note.id}` },
       body: { person_id: person.id },
     });
+
+    // Link any confirmed people mentioned in the note.
+    for (const m of mentioned_people) {
+      if (!m || m.action === 'skip' || !isValidType(m.relationship_to_subject)) continue;
+      try {
+        let otherId = m.person_id;
+        if (m.action === 'create') {
+          if (!m.name || !m.name.trim()) continue;
+          const { data: rows } = await pgrest('people', {
+            method: 'POST',
+            body: { name: m.name.trim() },
+            prefer: 'return=representation',
+          });
+          otherId = rows[0].id;
+        }
+        if (otherId && otherId !== person.id) {
+          await createLink(person.id, otherId, m.relationship_to_subject);
+        }
+      } catch (linkErr) {
+        console.error('mentioned-person link failed:', linkErr.message);
+      }
+    }
 
     const { data: full } = await pgrest('people', {
       query: { select: '*,notes(*)', id: `eq.${person.id}`, 'notes.order': 'created_at.desc' },
