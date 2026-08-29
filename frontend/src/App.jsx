@@ -1,6 +1,7 @@
 import { NavLink, Route, Routes } from 'react-router-dom';
 import { api, API_URL } from './lib/api.js';
 import { useAsync } from './lib/useAsync.js';
+import { clearPasscode } from './lib/session.js';
 import Home from './pages/Home.jsx';
 import PeopleList from './pages/PeopleList.jsx';
 import Person from './pages/Person.jsx';
@@ -40,7 +41,16 @@ export default function App() {
     <div className="mx-auto flex min-h-screen max-w-md flex-col px-4 py-6">
       <header className="mb-5 flex items-center justify-between">
         <h1 className="text-lg font-semibold">Personal CRM</h1>
-        <HealthDot />
+        <div className="flex items-center gap-3">
+          <button
+            onClick={clearPasscode}
+            className="text-xs text-slate-500 hover:text-slate-300"
+            title="Lock"
+          >
+            Lock
+          </button>
+          <HealthDot />
+        </div>
       </header>
 
       <nav className="mb-5 flex gap-1">

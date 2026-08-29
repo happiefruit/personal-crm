@@ -21,6 +21,7 @@ Following the build order in `spec.md`:
 
 - [x] **1. Scaffold** — frontend + backend skeleton, health check end-to-end, deploy config
 - [x] **2. CRM core** — people + notes CRUD, quick capture, list / detail / edit, inbox for unfiled notes
+- [x] **Auth** — shared-passcode gate on the API + lock screen (single-user private)
 - [ ] 3. AI parsing (Claude Haiku)
 - [ ] 4. Reminders
 - [ ] 5. PWA setup
@@ -66,11 +67,20 @@ supabase link --project-ref <your-project-ref>
 supabase db push
 ```
 
+## Auth
+
+Single-user. Every `/api/*` route except `/api/health` requires the shared
+passcode in `Authorization: Bearer <APP_PASSCODE>` (the frontend stores it after
+the lock screen and sends it automatically). Wrong passcodes are throttled per IP
+(10 tries / 15 min). Set `APP_PASSCODE` on the backend host — if it's unset the
+API is open and logs a warning on every request.
+
 ## API
 
 | Method | Route | Notes |
 |---|---|---|
-| GET | `/api/health` | backend + DB status |
+| GET | `/api/health` | backend + DB status (public) |
+| GET | `/api/auth/check` | 200 if the passcode is valid (used by the lock screen) |
 | GET | `/api/people` | list, most-recently-contacted first |
 | POST | `/api/people` | `{ name* , relationship, tags[], aliases[], summary, important_dates[] }` |
 | GET | `/api/people/:id` | profile + embedded `notes[]` timeline |

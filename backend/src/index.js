@@ -3,10 +3,12 @@ import express from 'express';
 import cors from 'cors';
 
 import { checkDatabase, supabaseConfigured } from './supabase.js';
+import { requirePasscode, authConfigured } from './auth.js';
 import peopleRouter from './routes/people.js';
 import notesRouter from './routes/notes.js';
 
 const app = express();
+app.set('trust proxy', 1); // Railway/Render sit behind a proxy; needed for req.ip
 app.use(express.json());
 
 const allowedOrigins = (process.env.FRONTEND_ORIGIN || 'http://localhost:5173')
@@ -28,6 +30,7 @@ app.get('/', (_req, res) => {
   res.json({ name: 'personal-crm-backend', status: 'up' });
 });
 
+// Public — no passcode required.
 app.get('/api/health', async (_req, res) => {
   const db = await checkDatabase();
   res.status(db.ok ? 200 : 503).json({
@@ -36,9 +39,16 @@ app.get('/api/health', async (_req, res) => {
     database: db.ok ? 'ok' : 'error',
     database_detail: db.detail,
     supabase_configured: supabaseConfigured,
+    auth_required: authConfigured,
     time: new Date().toISOString(),
   });
 });
+
+// Everything below the gate needs the shared passcode.
+app.use('/api', requirePasscode);
+
+// Lets the login screen verify a passcode before storing it.
+app.get('/api/auth/check', (_req, res) => res.json({ ok: true }));
 
 app.use('/api/people', peopleRouter);
 app.use('/api/notes', notesRouter);
@@ -53,6 +63,7 @@ const port = process.env.PORT || 3001;
 app.listen(port, () => {
   console.log(`personal-crm-backend listening on :${port}`);
   console.log(`allowed origins: ${allowedOrigins.join(', ')}`);
+  console.log(`passcode auth: ${authConfigured ? 'enabled' : 'DISABLED (set APP_PASSCODE)'}`);
   if (!supabaseConfigured) {
     console.warn('WARNING: Supabase env vars not set — /api/health will report degraded');
   }
