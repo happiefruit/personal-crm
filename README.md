@@ -20,7 +20,7 @@ See [spec.md](spec.md) for the full spec.
 Following the build order in `spec.md`:
 
 - [x] **1. Scaffold** — frontend + backend skeleton, health check end-to-end, deploy config
-- [ ] 2. CRM core (people + notes CRUD)
+- [x] **2. CRM core** — people + notes CRUD, quick capture, list / detail / edit, inbox for unfiled notes
 - [ ] 3. AI parsing (Claude Haiku)
 - [ ] 4. Reminders
 - [ ] 5. PWA setup
@@ -65,6 +65,21 @@ npm i -g supabase
 supabase link --project-ref <your-project-ref>
 supabase db push
 ```
+
+## API
+
+| Method | Route | Notes |
+|---|---|---|
+| GET | `/api/health` | backend + DB status |
+| GET | `/api/people` | list, most-recently-contacted first |
+| POST | `/api/people` | `{ name* , relationship, tags[], aliases[], summary, important_dates[] }` |
+| GET | `/api/people/:id` | profile + embedded `notes[]` timeline |
+| PATCH | `/api/people/:id` | any writable field |
+| DELETE | `/api/people/:id` | notes are kept, `person_id` set null |
+| GET | `/api/notes?person_id=` | timeline, newest first |
+| POST | `/api/notes` | `{ raw_text*, person_id, source }` — bumps person's `last_contacted_at` |
+| PATCH | `/api/notes/:id` | reassign `person_id` / fix `raw_text` |
+| DELETE | `/api/notes/:id` | |
 
 ## Notes on the backend ↔ Supabase link
 

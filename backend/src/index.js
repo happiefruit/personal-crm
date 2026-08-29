@@ -3,6 +3,8 @@ import express from 'express';
 import cors from 'cors';
 
 import { checkDatabase, supabaseConfigured } from './supabase.js';
+import peopleRouter from './routes/people.js';
+import notesRouter from './routes/notes.js';
 
 const app = express();
 app.use(express.json());
@@ -37,6 +39,9 @@ app.get('/api/health', async (_req, res) => {
     time: new Date().toISOString(),
   });
 });
+
+app.use('/api/people', peopleRouter);
+app.use('/api/notes', notesRouter);
 
 // eslint-disable-next-line no-unused-vars
 app.use((err, _req, res, _next) => {

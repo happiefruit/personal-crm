@@ -1,96 +1,63 @@
-import { useCallback, useEffect, useState } from 'react';
-import { apiGet, API_URL } from './lib/api.js';
+import { NavLink, Route, Routes } from 'react-router-dom';
+import { api, API_URL } from './lib/api.js';
+import { useAsync } from './lib/useAsync.js';
+import Home from './pages/Home.jsx';
+import PeopleList from './pages/PeopleList.jsx';
+import Person from './pages/Person.jsx';
+import Inbox from './pages/Inbox.jsx';
 
-function StatusDot({ ok }) {
+function Tab({ to, children }) {
+  return (
+    <NavLink
+      to={to}
+      end={to === '/'}
+      className={({ isActive }) =>
+        `rounded-md px-3 py-1.5 text-sm font-medium ${
+          isActive ? 'bg-slate-800 text-slate-100' : 'text-slate-400 hover:text-slate-200'
+        }`
+      }
+    >
+      {children}
+    </NavLink>
+  );
+}
+
+function HealthDot() {
+  const { data } = useAsync(() => api.get('/api/health').catch(() => null), []);
+  const ok = data?.status === 'ok';
   return (
     <span
-      className={`inline-block h-2.5 w-2.5 rounded-full ${
-        ok === null ? 'bg-slate-500' : ok ? 'bg-emerald-400' : 'bg-red-400'
+      title={data ? `API ${data.status}` : `API unreachable (${API_URL})`}
+      className={`inline-block h-2 w-2 rounded-full ${
+        !data ? 'bg-red-400' : ok ? 'bg-emerald-400' : 'bg-amber-400'
       }`}
     />
   );
 }
 
-function Row({ label, ok, detail }) {
-  return (
-    <div className="flex items-center justify-between gap-3 py-2">
-      <span className="text-slate-300">{label}</span>
-      <span className="flex items-center gap-2 text-sm">
-        {detail && <span className="text-slate-500">{detail}</span>}
-        <StatusDot ok={ok} />
-      </span>
-    </div>
-  );
-}
-
 export default function App() {
-  const [health, setHealth] = useState(null);
-  const [error, setError] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      setHealth(await apiGet('/api/health'));
-    } catch (err) {
-      setError(err.message);
-      setHealth(null);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    load();
-  }, [load]);
-
-  const backendOk = health ? health.backend === 'ok' : error ? false : null;
-  const dbOk = health ? health.database === 'ok' : null;
-
   return (
-    <div className="mx-auto flex min-h-screen max-w-md flex-col gap-6 px-5 py-10">
-      <header>
-        <h1 className="text-2xl font-semibold">Personal CRM</h1>
-        <p className="mt-1 text-sm text-slate-400">Scaffold — step 1 of the build order</p>
+    <div className="mx-auto flex min-h-screen max-w-md flex-col px-4 py-6">
+      <header className="mb-5 flex items-center justify-between">
+        <h1 className="text-lg font-semibold">Personal CRM</h1>
+        <HealthDot />
       </header>
 
-      <section className="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
-        <div className="flex items-center justify-between">
-          <h2 className="font-medium">System health</h2>
-          <button
-            onClick={load}
-            className="rounded-md border border-slate-700 px-2.5 py-1 text-xs text-slate-300 hover:bg-slate-800"
-          >
-            {loading ? 'Checking…' : 'Refresh'}
-          </button>
-        </div>
+      <nav className="mb-5 flex gap-1">
+        <Tab to="/">Home</Tab>
+        <Tab to="/people">People</Tab>
+        <Tab to="/inbox">Inbox</Tab>
+      </nav>
 
-        <div className="mt-2 divide-y divide-slate-800">
-          <Row label="Frontend" ok={true} detail="loaded" />
-          <Row
-            label="Backend API"
-            ok={backendOk}
-            detail={error ? 'unreachable' : health ? 'ok' : ''}
-          />
-          <Row
-            label="Database"
-            ok={dbOk}
-            detail={health ? health.database_detail : ''}
-          />
-        </div>
-
-        {error && (
-          <p className="mt-3 rounded-md bg-red-950/50 px-3 py-2 text-xs text-red-300">
-            {error} — is the backend running at {API_URL}?
-          </p>
-        )}
-      </section>
-
-      <p className="text-xs text-slate-600">
-        API: {API_URL}
-        {health?.time ? ` · checked ${new Date(health.time).toLocaleTimeString()}` : ''}
-      </p>
+      <main className="flex-1">
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/people" element={<PeopleList />} />
+          <Route path="/people/:id" element={<Person />} />
+          <Route path="/inbox" element={<Inbox />} />
+          <Route path="*" element={<p className="text-sm text-slate-500">Not found.</p>} />
+        </Routes>
+      </main>
     </div>
   );
 }

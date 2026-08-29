@@ -1,17 +1,31 @@
 const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3001').replace(/\/$/, '');
 
-export async function apiGet(path) {
+async function request(path, { method = 'GET', body } = {}) {
   const res = await fetch(`${API_URL}${path}`, {
-    headers: { Accept: 'application/json' },
+    method,
+    headers: {
+      Accept: 'application/json',
+      ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+    },
+    body: body === undefined ? undefined : JSON.stringify(body),
   });
-  const body = await res.json().catch(() => ({}));
+
+  if (res.status === 204) return null;
+
+  const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    const err = new Error(body.error || `Request failed: ${res.status}`);
+    const err = new Error(data.error || `Request failed: ${res.status}`);
     err.status = res.status;
-    err.body = body;
     throw err;
   }
-  return body;
+  return data;
 }
+
+export const api = {
+  get: (p) => request(p),
+  post: (p, body) => request(p, { method: 'POST', body }),
+  patch: (p, body) => request(p, { method: 'PATCH', body }),
+  del: (p) => request(p, { method: 'DELETE' }),
+};
 
 export { API_URL };
