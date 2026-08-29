@@ -33,11 +33,14 @@ export function useSpeech(onFinal) {
     };
     rec.onerror = (e) => {
       if (e.error === 'no-speech' || e.error === 'aborted') return;
-      setError(
-        e.error === 'not-allowed'
-          ? 'Microphone permission denied'
-          : `Speech error: ${e.error}`,
-      );
+      const messages = {
+        'not-allowed': 'Microphone permission denied',
+        'service-not-allowed': 'Microphone permission denied',
+        // Brave / ungoogled-Chromium strip the Google speech key -> always "network"
+        network: "Voice typing isn't available in this browser — try Chrome, or the app on your phone",
+        'language-not-supported': 'This language isn’t supported for voice typing',
+      };
+      setError(messages[e.error] || `Voice error: ${e.error}`);
       setListening(false);
     };
     rec.onend = () => setListening(false);

@@ -62,7 +62,7 @@ export function MicButton({ onText, onListeningChange }) {
   }
 
   return (
-    <span className="inline-flex items-center gap-1.5">
+    <>
       <button
         type="button"
         onClick={toggle}
@@ -75,8 +75,8 @@ export function MicButton({ onText, onListeningChange }) {
       >
         {listening ? '● Listening' : '🎤'}
       </button>
-      {error && <span className="text-xs text-red-400">{error}</span>}
-    </span>
+      {error && <span className="basis-full text-xs text-amber-400">{error}</span>}
+    </>
   );
 }
 
