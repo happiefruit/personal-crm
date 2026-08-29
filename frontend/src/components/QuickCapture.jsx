@@ -19,7 +19,6 @@ export default function QuickCapture({ people = [], lockedPersonId, onSaved }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const [usedVoice, setUsedVoice] = useState(false);
-  const appendSpoken = (chunk) => setText((t) => (t ? `${t} ${chunk}` : chunk));
 
   async function submit(e) {
     e.preventDefault();
@@ -93,7 +92,11 @@ export default function QuickCapture({ people = [], lockedPersonId, onSaved }) {
         <Button type="submit" disabled={busy || !text.trim()}>
           {busy ? 'Saving…' : 'Save note'}
         </Button>
-        <MicButton onText={appendSpoken} onListeningChange={(on) => on && setUsedVoice(true)} />
+        <MicButton
+          value={text}
+          onChange={setText}
+          onListeningChange={(on) => on && setUsedVoice(true)}
+        />
         {text && (
           <button
             type="button"

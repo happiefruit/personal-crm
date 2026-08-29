@@ -4,38 +4,51 @@ const SR =
   typeof window !== 'undefined' &&
   (window.SpeechRecognition || window.webkitSpeechRecognition);
 
+// Collapse a SpeechRecognitionResultList into one string.
+// Samsung Internet emits a chain of growing prefixes for a single utterance
+// ("my", "my youngest", "my youngest sister"…); keep only the longest of each
+// chain so the phrase isn't repeated.
+function buildTranscript(results) {
+  const phrases = [];
+  let cur = '';
+  for (let i = 0; i < results.length; i += 1) {
+    const r = results[i];
+    if (!r || !r.isFinal) continue;
+    const t = (r[0]?.transcript || '').trim();
+    if (!t) continue;
+    if (cur && (t.startsWith(cur) || cur.startsWith(t))) {
+      cur = t.length >= cur.length ? t : cur;
+    } else {
+      if (cur) phrases.push(cur);
+      cur = t;
+    }
+  }
+  if (cur) phrases.push(cur);
+  return phrases.join(' ');
+}
+
 /**
- * In-browser speech-to-text. Finalized phrases are handed to `onFinal(text)`.
- * @param {(text: string) => void} onFinal
+ * In-browser speech-to-text.
+ * @param {(fullTranscript: string) => void} onTranscript  the whole session's text so far
  */
-export function useSpeech(onFinal) {
+export function useSpeech(onTranscript) {
   const supported = Boolean(SR);
   const [listening, setListening] = useState(false);
   const [error, setError] = useState(null);
   const recRef = useRef(null);
-  const onFinalRef = useRef(onFinal);
-  onFinalRef.current = onFinal;
-
-  // How many entries of `event.results` we've already emitted. Samsung Internet
-  // (and some Android Chrome builds) re-fire onresult for an already-final result
-  // multiple times — without this guard the phrase gets appended 2-3x.
-  const emittedRef = useRef(0);
+  const cbRef = useRef(onTranscript);
+  cbRef.current = onTranscript;
 
   useEffect(() => {
     if (!supported) return undefined;
     const rec = new SR();
     rec.continuous = true;
-    rec.interimResults = true;
+    rec.interimResults = false;
     rec.lang = navigator.language || 'en-US';
 
     rec.onresult = (e) => {
-      for (let i = emittedRef.current; i < e.results.length; i += 1) {
-        const r = e.results[i];
-        if (!r.isFinal) break; // results finalize in order; stop at the first interim
-        const text = (r[0]?.transcript || '').trim();
-        if (text) onFinalRef.current?.(text);
-        emittedRef.current = i + 1;
-      }
+      const text = buildTranscript(e.results);
+      if (text) cbRef.current?.(text);
     };
     rec.onerror = (e) => {
       if (e.error === 'no-speech' || e.error === 'aborted') return;
@@ -64,7 +77,6 @@ export function useSpeech(onFinal) {
   const start = useCallback(() => {
     if (!recRef.current || listening) return;
     setError(null);
-    emittedRef.current = 0; // fresh session -> results list restarts at 0
     try {
       recRef.current.start();
       setListening(true);

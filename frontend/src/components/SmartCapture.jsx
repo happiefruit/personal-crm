@@ -346,9 +346,6 @@ export default function SmartCapture({ aiAvailable, people, onSaved }) {
   const [manualFallback, setManualFallback] = useState(false);
   const [usedVoice, setUsedVoice] = useState(false);
 
-  const appendSpoken = (chunk) =>
-    setText((t) => (t ? `${t} ${chunk}` : chunk));
-
   if (!aiAvailable || manualFallback) {
     return (
       <QuickCapture
@@ -419,7 +416,11 @@ export default function SmartCapture({ aiAvailable, people, onSaved }) {
         <Button type="submit" disabled={busy || !text.trim()}>
           {busy ? 'Reading…' : 'Save & file with AI'}
         </Button>
-        <MicButton onText={appendSpoken} onListeningChange={(on) => on && setUsedVoice(true)} />
+        <MicButton
+          value={text}
+          onChange={setText}
+          onListeningChange={(on) => on && setUsedVoice(true)}
+        />
         {text && (
           <button
             type="button"

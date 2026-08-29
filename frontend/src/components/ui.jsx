@@ -44,20 +44,32 @@ export function Button({ className = '', variant = 'primary', ...props }) {
   );
 }
 
+import { useRef } from 'react';
 import { useSpeech } from '../lib/useSpeech.js';
 
 /**
  * Mic toggle for dictation. Renders nothing where the browser has no speech API.
- * @param {(chunk: string) => void} props.onText  called with each finalized phrase
+ * Dictated text is appended after whatever was in the field when the mic started.
+ * @param {string} props.value            current field text
+ * @param {(next: string) => void} props.onChange  set the field text
+ * @param {(on: boolean) => void} [props.onListeningChange]
  */
-export function MicButton({ onText, onListeningChange }) {
-  const { supported, listening, error, start, stop } = useSpeech(onText);
+export function MicButton({ value, onChange, onListeningChange }) {
+  const baseRef = useRef('');
+  const { supported, listening, error, start, stop } = useSpeech((transcript) => {
+    const base = baseRef.current;
+    onChange(base && transcript ? `${base} ${transcript}` : base + transcript);
+  });
   if (!supported) return null;
 
   function toggle() {
     const next = !listening;
-    if (next) start();
-    else stop();
+    if (next) {
+      baseRef.current = value || '';
+      start();
+    } else {
+      stop();
+    }
     onListeningChange?.(next);
   }
 
