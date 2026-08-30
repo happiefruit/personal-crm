@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, useParams, Link } from 'react-router-dom';
+import { useLocation, useNavigate, useParams, Link } from 'react-router-dom';
 import { api } from '../lib/api.js';
 import { useAsync } from '../lib/useAsync.js';
 import { computeAge, formatDate, formatDateTime, relativeTime } from '../lib/format.js';
@@ -377,7 +377,8 @@ export default function Person() {
   const person = data?.[0];
   const allPeople = data?.[1] || [];
   const aiAvailable = Boolean(data?.[2]?.ai_available);
-  const [editing, setEditing] = useState(false);
+  const location = useLocation();
+  const [editing, setEditing] = useState(Boolean(location.state?.edit));
 
   async function removePerson() {
     if (!confirm(`Delete ${person.name}? Their notes become unfiled.`)) return;

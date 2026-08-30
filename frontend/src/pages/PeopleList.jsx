@@ -1,9 +1,68 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../lib/api.js';
 import { useAsync } from '../lib/useAsync.js';
 import { relativeTime } from '../lib/format.js';
-import { Card, Chip, ErrorNote, Spinner, TextInput } from '../components/ui.jsx';
+import { Button, Card, Chip, ErrorNote, Spinner, TextInput } from '../components/ui.jsx';
+
+function AddPerson() {
+  const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState('');
+  const [relationship, setRelationship] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+
+  async function submit(e) {
+    e.preventDefault();
+    if (!name.trim() || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const person = await api.post('/api/people', {
+        name: name.trim(),
+        relationship: relationship.trim() || null,
+      });
+      navigate(`/people/${person.id}`, { state: { edit: true } });
+    } catch (err) {
+      setError(err);
+      setBusy(false);
+    }
+  }
+
+  if (!open) {
+    return (
+      <Button variant="ghost" onClick={() => setOpen(true)}>
+        + Add person
+      </Button>
+    );
+  }
+
+  return (
+    <form onSubmit={submit} className="w-full space-y-2 rounded-md border border-slate-800 p-3">
+      <TextInput
+        autoFocus
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        placeholder="Name"
+      />
+      <TextInput
+        value={relationship}
+        onChange={(e) => setRelationship(e.target.value)}
+        placeholder="Relationship (friend, family…) — optional"
+      />
+      <ErrorNote error={error} />
+      <div className="flex gap-2">
+        <Button type="submit" disabled={busy || !name.trim()}>
+          {busy ? 'Adding…' : 'Add & open'}
+        </Button>
+        <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
+          Cancel
+        </Button>
+      </div>
+    </form>
+  );
+}
 
 export default function PeopleList() {
   const { data: people, error, loading, reload } = useAsync(() => api.get('/api/people'), []);
@@ -22,6 +81,8 @@ export default function PeopleList() {
         <h2 className="text-lg font-semibold">People</h2>
         <span className="text-xs text-slate-500">{(people || []).length} total</span>
       </div>
+
+      <AddPerson />
 
       <TextInput
         value={q}
