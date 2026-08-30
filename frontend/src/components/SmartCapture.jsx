@@ -25,7 +25,9 @@ function SuggestionReview({ result, lockedPerson, onCancel, onApplied }) {
         ? suggestion.matched_person_id
         : 'new',
   );
-  const [name, setName] = useState(suggestion.name);
+  const [name, setName] = useState(
+    /^<.*>$|^\?+$|^unknown$/i.test((suggestion.name || '').trim()) ? '' : suggestion.name,
+  );
   const [relationship, setRelationship] = useState(suggestion.relationship_guess || '');
   const [tags, setTags] = useState(csv(suggestion.tags));
   const [summary, setSummary] = useState(suggestion.summary);

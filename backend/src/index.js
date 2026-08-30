@@ -4,6 +4,7 @@ import cors from 'cors';
 
 import { checkDatabase, supabaseConfigured } from './supabase.js';
 import { requirePasscode, authConfigured } from './auth.js';
+import { rateLimit } from './rateLimit.js';
 import { aiConfigured } from './ai/parseNote.js';
 import peopleRouter from './routes/people.js';
 import notesRouter from './routes/notes.js';
@@ -50,6 +51,11 @@ app.get('/api/health', async (_req, res) => {
 
 // Everything below the gate needs the shared passcode.
 app.use('/api', requirePasscode);
+
+// Broad ceiling on the whole API, plus a tight one on the paid AI routes so a
+// leaked passcode can't run up an Anthropic bill.
+app.use('/api', rateLimit({ windowMs: 5 * 60_000, max: 400, name: 'requests' }));
+app.use('/api/ai', rateLimit({ windowMs: 5 * 60_000, max: 40, name: 'AI requests' }));
 
 // Lets the login screen verify a passcode before storing it.
 app.get('/api/auth/check', (_req, res) => res.json({ ok: true }));

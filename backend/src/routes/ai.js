@@ -7,6 +7,8 @@ import { uniq, mergeDates } from '../merge.js';
 
 const router = Router();
 
+const MAX_NOTE_CHARS = 8000;
+
 router.use((_req, res, next) => {
   if (!aiConfigured) return res.status(503).json({ error: 'AI not configured (ANTHROPIC_API_KEY)' });
   next();
@@ -19,6 +21,9 @@ router.post('/parse', async (req, res, next) => {
     const { raw_text, source = 'manual', for_person_id = null } = req.body;
     if (!raw_text || !raw_text.trim()) {
       return res.status(400).json({ error: 'raw_text is required' });
+    }
+    if (raw_text.length > MAX_NOTE_CHARS) {
+      return res.status(413).json({ error: `note too long (max ${MAX_NOTE_CHARS} chars)` });
     }
 
     const { data: people } = await pgrest('people', {

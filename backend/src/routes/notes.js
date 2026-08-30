@@ -22,6 +22,9 @@ router.post('/', async (req, res, next) => {
     if (!raw_text || !raw_text.trim()) {
       return res.status(400).json({ error: 'raw_text is required' });
     }
+    if (raw_text.length > 8000) {
+      return res.status(413).json({ error: 'note too long (max 8000 chars)' });
+    }
 
     const { data } = await pgrest('notes', {
       method: 'POST',

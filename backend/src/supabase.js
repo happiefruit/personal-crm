@@ -35,11 +35,20 @@ export async function pgrest(table, opts = {}) {
   if (body !== undefined) headers['Content-Type'] = 'application/json';
   if (prefer) headers.Prefer = prefer;
 
-  const res = await fetch(url, {
-    method,
-    headers,
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
+  let res;
+  try {
+    res = await fetch(url, {
+      method,
+      headers,
+      body: body === undefined ? undefined : JSON.stringify(body),
+      signal: AbortSignal.timeout(10_000),
+    });
+  } catch (err) {
+    if (err.name === 'TimeoutError' || err.name === 'AbortError') {
+      throw new Error('database request timed out');
+    }
+    throw err;
+  }
 
   const text = await res.text();
   const data = text ? JSON.parse(text) : null;

@@ -156,7 +156,9 @@ unknown (e.g. a birthday with no year), use 0000 for the year.`;
 note clearly states it about the right person — otherwise leave it null or empty.
 Keep tags, likes, dislikes and facts short.
 When the note mentions OTHER people with an explicit tie ("her husband", "my manager Dana"),
-put them in mentioned_people; never fold their job/details into the main person's fields.`;
+put them in mentioned_people; never fold their job/details into the main person's fields.
+If someone is referred to only by role with no name ("my dad", "her manager"), use a short
+human name like "Dad" or "Manager" — never "<UNKNOWN>", "?", or an empty name.`;
 
   if (subject) {
     return `You are updating the profile of ${subject.name} (id ${subject.id}) from a short note.
@@ -214,7 +216,7 @@ export async function parseNote({ rawText, people, subjectPerson = null }) {
 
   const msg = await client.messages.create({
     model: MODEL,
-    max_tokens: 1024,
+    max_tokens: 2048,
     system: systemPrompt(subjectPerson),
     tools: [TOOL],
     tool_choice: { type: 'tool', name: 'file_note' },
