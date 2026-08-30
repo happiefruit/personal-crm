@@ -47,6 +47,17 @@ Target platform: mobile-first responsive web app, installable as a PWA on your S
 | last_contacted_at | timestamp | updated whenever a new note is filed against them |
 | created_at | timestamp | |
 
+### `ai_usage` (token/cost tracking)
+| Field | Type | Notes |
+|---|---|---|
+| id | uuid | PK |
+| created_at | timestamp | |
+| model | text | e.g. `claude-haiku-4-5` |
+| operation | text | `parse_note` (room for future AI features) |
+| input_tokens / output_tokens / cache_read_tokens / cache_write_tokens | int | from the Anthropic response `usage` |
+| cost_usd | numeric | **estimate** from a hard-coded rate table |
+| note_id | uuid | FK → notes, nullable |
+
 ### `relationships` (step 5)
 | Field | Type | Notes |
 |---|---|---|

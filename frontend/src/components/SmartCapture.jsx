@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api.js';
+import { formatInt, formatUsd } from '../lib/format.js';
 import { Button, Card, Chip, ErrorNote, MicButton, TextInput } from './ui.jsx';
 import QuickCapture from './QuickCapture.jsx';
 
@@ -283,6 +284,13 @@ function SuggestionReview({ result, lockedPerson, onCancel, onApplied }) {
       {suggestion.facts.length > 0 && (
         <div className="text-xs text-slate-500">
           Extracted: {suggestion.facts.join(' · ')}
+        </div>
+      )}
+
+      {result.cost && (
+        <div className="text-[11px] text-slate-600">
+          ≈ {formatUsd(result.cost.cost)} · {formatInt(result.cost.input)} in /{' '}
+          {formatInt(result.cost.output)} out tokens
         </div>
       )}
 

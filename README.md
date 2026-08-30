@@ -93,7 +93,8 @@ API is open and logs a warning on every request.
 | POST | `/api/notes` | `{ raw_text*, person_id, source }` — bumps person's `last_contacted_at` |
 | PATCH | `/api/notes/:id` | reassign `person_id` / fix `raw_text` |
 | DELETE | `/api/notes/:id` | |
-| POST | `/api/ai/parse` | `{ raw_text }` → saves the note, returns `{ note, suggestion, people }`; changes nothing yet. 502 (note still saved) if the AI call fails. |
+| GET | `/api/ai/usage` | `{ this_month, all_time }` token + estimated-cost totals (readable with no key) |
+| POST | `/api/ai/parse` | `{ raw_text }` → saves the note, returns `{ note, suggestion, people, cost }`; changes nothing yet. 502 (note still saved) if the AI call fails. |
 | POST | `/api/ai/apply` | commit a reviewed suggestion → creates/updates the person, files the note, links any confirmed mentioned people, returns the person |
 | GET | `/api/relationships/types` | allowed link types |
 | POST | `/api/relationships` | `{ from_person_id, to_person_id, type }` → creates the link + its inverse |
@@ -143,6 +144,11 @@ an existing person, tags and dates are merged (union), the summary is replaced
 with the AI's revised one, and the note is filed. Needs `ANTHROPIC_API_KEY`;
 without it `/api/ai/*` returns 503 and the capture box falls back to manual
 filing. `~$0.001–0.002` per note.
+
+Every call's `usage` is written to `ai_usage` with an **estimated** cost
+(`backend/src/ai/pricing.js` — a hard-coded $/MTok table; the Anthropic console
+is authoritative). The review card shows the note's cost + token counts; Home
+shows a running month total. `/api/ai/*` is rate-limited to 40 requests / 5 min.
 
 The **Add a note** box on a person's profile uses the same flow in "locked"
 mode — no person picker, the review card is headed "Update <name>", and

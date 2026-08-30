@@ -42,6 +42,19 @@ export function daysSince(iso) {
   return (Date.now() - new Date(iso).getTime()) / 86_400_000;
 }
 
+/** Compact USD: "$0" / "$0.0018" for tiny amounts / "$1.24" otherwise. */
+export function formatUsd(n) {
+  const v = Number(n) || 0;
+  if (v === 0) return '$0';
+  if (v < 0.1) return `$${v.toFixed(4)}`;
+  return `$${v.toFixed(2)}`;
+}
+
+/** "12,345" */
+export function formatInt(n) {
+  return (Number(n) || 0).toLocaleString();
+}
+
 /** Human due-date label: "today", "in 3 days", "2 days overdue", "in 5 weeks". */
 export function formatDue(iso) {
   if (!iso) return '';

@@ -5,10 +5,20 @@ import { createLink } from '../relationships.js';
 import { isValidType } from '../relationshipTypes.js';
 import { uniq, mergeDates } from '../merge.js';
 import { syncBirthdayReminder } from '../reminders.js';
+import { recordUsage, getUsageSummary } from '../ai/usage.js';
 
 const router = Router();
 
 const MAX_NOTE_CHARS = 8000;
+
+// Usage/cost history — readable even when the AI key is unset.
+router.get('/usage', async (_req, res, next) => {
+  try {
+    res.json(await getUsageSummary());
+  } catch (err) {
+    next(err);
+  }
+});
 
 router.use((_req, res, next) => {
   if (!aiConfigured) return res.status(503).json({ error: 'AI not configured (ANTHROPIC_API_KEY)' });
@@ -43,12 +53,25 @@ router.post('/parse', async (req, res, next) => {
     const note = noteRows[0];
 
     let suggestion;
+    let usage;
+    let model;
     try {
-      ({ suggestion } = await parseNote({ rawText: note.raw_text, people, subjectPerson }));
+      ({ suggestion, usage, model } = await parseNote({
+        rawText: note.raw_text,
+        people,
+        subjectPerson,
+      }));
     } catch (aiErr) {
       // Note is safely saved; let the client fall back to manual filing.
       return res.status(502).json({ error: `AI parse failed: ${aiErr.message}`, note });
     }
+
+    const cost = await recordUsage({
+      model,
+      operation: 'parse_note',
+      usage,
+      noteId: note.id,
+    });
 
     await pgrest('notes', {
       method: 'PATCH',
@@ -56,7 +79,7 @@ router.post('/parse', async (req, res, next) => {
       body: { extracted_facts: suggestion },
     });
 
-    res.status(201).json({ note, suggestion, people });
+    res.status(201).json({ note, suggestion, people, cost });
   } catch (err) {
     next(err);
   }

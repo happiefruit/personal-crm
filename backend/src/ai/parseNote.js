@@ -240,7 +240,7 @@ export async function parseNote({ rawText, people, subjectPerson = null }) {
   if (subjectPerson) {
     suggestion = { ...suggestion, person_match: 'existing', matched_person_id: subjectPerson.id };
   }
-  return { suggestion, usage: msg.usage };
+  return { suggestion, usage: msg.usage, model: MODEL };
 }
 
 // If the model filed the birthday under important_dates instead of birthdate, move it.

@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { api } from '../lib/api.js';
 import { useAsync } from '../lib/useAsync.js';
-import { daysSince, relativeTime } from '../lib/format.js';
+import { daysSince, formatInt, formatUsd, relativeTime } from '../lib/format.js';
 import { Card, Chip, ErrorNote, Spinner } from '../components/ui.jsx';
 import SmartCapture from '../components/SmartCapture.jsx';
 import Reminders from '../components/Reminders.jsx';
@@ -25,11 +25,17 @@ function PersonRow({ person }) {
 
 export default function Home() {
   const { data, error, loading, reload } = useAsync(
-    () => Promise.all([api.get('/api/people'), api.get('/api/health').catch(() => ({}))]),
+    () =>
+      Promise.all([
+        api.get('/api/people'),
+        api.get('/api/health').catch(() => ({})),
+        api.get('/api/ai/usage').catch(() => null),
+      ]),
     [],
   );
   const people = data?.[0];
   const aiAvailable = Boolean(data?.[1]?.ai_available);
+  const usage = data?.[2]?.this_month;
 
   const recent = (people || []).filter((p) => p.last_contacted_at).slice(0, 5);
   const stale = (people || [])
@@ -81,6 +87,14 @@ export default function Home() {
             </Card>
           )}
         </>
+      )}
+
+      {usage && usage.calls > 0 && (
+        <p className="text-center text-[11px] text-slate-600">
+          AI this month: {usage.calls} {usage.calls === 1 ? 'note' : 'notes'} ·{' '}
+          {formatInt(usage.input_tokens + usage.output_tokens)} tokens · ≈{' '}
+          {formatUsd(usage.cost_usd)} <span className="text-slate-700">(estimate)</span>
+        </p>
       )}
     </div>
   );
