@@ -8,7 +8,7 @@ const SR =
 // Samsung Internet emits a chain of growing prefixes for a single utterance
 // ("my", "my youngest", "my youngest sister"…); keep only the longest of each
 // chain so the phrase isn't repeated.
-function buildTranscript(results) {
+export function buildTranscript(results) {
   const phrases = [];
   let cur = '';
   for (let i = 0; i < results.length; i += 1) {

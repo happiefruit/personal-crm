@@ -1,0 +1,13 @@
+{
+  "name": "personal-crm",
+  "private": true,
+  "description": "Tooling root — the app lives in backend/ and frontend/, each deployed separately.",
+  "scripts": {
+    "format": "prettier --write \"{backend,frontend}/src/**/*.{js,jsx}\" \"*.{md,json,yml}\"",
+    "format:check": "prettier --check \"{backend,frontend}/src/**/*.{js,jsx}\"",
+    "test": "npm --prefix backend test && npm --prefix frontend test"
+  },
+  "devDependencies": {
+    "prettier": "^3.3.3"
+  }
+}

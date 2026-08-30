@@ -3,6 +3,7 @@ import { pgrest } from '../supabase.js';
 import { parseNote, aiConfigured } from '../ai/parseNote.js';
 import { createLink } from '../relationships.js';
 import { isValidType } from '../relationshipTypes.js';
+import { uniq, mergeDates } from '../merge.js';
 
 const router = Router();
 
@@ -10,17 +11,6 @@ router.use((_req, res, next) => {
   if (!aiConfigured) return res.status(503).json({ error: 'AI not configured (ANTHROPIC_API_KEY)' });
   next();
 });
-
-function uniq(arr) {
-  return [...new Set(arr.filter(Boolean))];
-}
-
-function mergeDates(current = [], incoming = []) {
-  const byLabel = new Map();
-  for (const d of current) byLabel.set(d.label.toLowerCase(), d);
-  for (const d of incoming) byLabel.set(d.label.toLowerCase(), d); // incoming wins
-  return [...byLabel.values()];
-}
 
 // POST /api/ai/parse — save the raw note, run the AI analysis, return a suggestion.
 // Nothing about any person is changed yet; the client confirms via /api/ai/apply.

@@ -237,7 +237,7 @@ export async function parseNote({ rawText, people, subjectPerson = null }) {
 }
 
 // If the model filed the birthday under important_dates instead of birthdate, move it.
-function promoteBirthday(s) {
+export function promoteBirthday(s) {
   if (s.birthdate) return s;
   const i = s.important_dates.findIndex((d) => /\bbirth\s*day\b|\bbirthday\b/i.test(d.label));
   if (i === -1) return s;
@@ -246,7 +246,7 @@ function promoteBirthday(s) {
 }
 
 // Defensive coercion — never trust the shape completely.
-function normalize(raw) {
+export function normalize(raw) {
   const s = raw || {};
   const validId = s.person_match === 'existing' && typeof s.matched_person_id === 'string';
   const str = (v) => (v == null || String(v).trim() === '' ? null : String(v).trim());
