@@ -4,6 +4,7 @@ import { parseNote, aiConfigured } from '../ai/parseNote.js';
 import { createLink } from '../relationships.js';
 import { isValidType } from '../relationshipTypes.js';
 import { uniq, mergeDates } from '../merge.js';
+import { syncBirthdayReminder } from '../reminders.js';
 
 const router = Router();
 
@@ -83,6 +84,7 @@ router.post('/apply', async (req, res, next) => {
       likes = [],
       dislikes = [],
       mentioned_people = [],
+      reminder = null, // { message, due_at } — user-confirmed from the suggestion
     } = req.body;
 
     // Scalar contact fields: fill only when the person doesn't already have one.
@@ -167,6 +169,24 @@ router.post('/apply', async (req, res, next) => {
       } catch (linkErr) {
         console.error('mentioned-person link failed:', linkErr.message);
       }
+    }
+
+    // Keep the birthday reminder in sync if a birthdate was set/changed.
+    await syncBirthdayReminder(person).catch((e) => console.error('birthday reminder:', e.message));
+
+    // Optional follow-up reminder the user confirmed from the AI suggestion.
+    if (reminder && reminder.message && reminder.due_at && !Number.isNaN(Date.parse(reminder.due_at))) {
+      await pgrest('reminders', {
+        method: 'POST',
+        body: {
+          person_id: person.id,
+          message: String(reminder.message).trim(),
+          due_at: new Date(reminder.due_at).toISOString(),
+          recurring: null,
+          sent: false,
+          kind: 'ai',
+        },
+      }).catch((e) => console.error('ai reminder:', e.message));
     }
 
     const { data: full } = await pgrest('people', {

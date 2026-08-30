@@ -4,6 +4,7 @@ import { useAsync } from '../lib/useAsync.js';
 import { daysSince, relativeTime } from '../lib/format.js';
 import { Card, Chip, ErrorNote, Spinner } from '../components/ui.jsx';
 import SmartCapture from '../components/SmartCapture.jsx';
+import Reminders from '../components/Reminders.jsx';
 
 const STALE_DAYS = 30;
 
@@ -41,6 +42,8 @@ export default function Home() {
         <h2 className="mb-2 font-medium">Quick capture</h2>
         <SmartCapture aiAvailable={aiAvailable} people={people || []} onSaved={reload} />
       </Card>
+
+      <Reminders />
 
       <ErrorNote error={error} onRetry={reload} />
       {loading && <Spinner />}

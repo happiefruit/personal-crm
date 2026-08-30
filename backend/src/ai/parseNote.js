@@ -113,13 +113,18 @@ const TOOL = {
         type: ['object', 'null'],
         additionalProperties: false,
         properties: {
-          message: { type: 'string' },
+          message: { type: 'string', description: 'Short imperative, e.g. "Text Priya good luck".' },
           due_hint: {
             type: 'string',
             description: 'Natural-language timing from the note, e.g. "next week", "after her surgery".',
           },
+          due_at: {
+            type: ['string', 'null'],
+            description:
+              'Concrete date resolved from due_hint and today\'s date, as YYYY-MM-DD. null if the note gives no usable timing (e.g. "after her surgery").',
+          },
         },
-        required: ['message', 'due_hint'],
+        required: ['message', 'due_hint', 'due_at'],
         description: 'Set only if the note contains something clearly time-sensitive to follow up on.',
       },
     },
@@ -291,6 +296,9 @@ export function normalize(raw) {
         ? {
             message: String(s.reminder_suggestion.message),
             due_hint: String(s.reminder_suggestion.due_hint || ''),
+            due_at: /^\d{4}-\d{2}-\d{2}$/.test(s.reminder_suggestion.due_at || '')
+              ? s.reminder_suggestion.due_at
+              : null,
           }
         : null,
   };

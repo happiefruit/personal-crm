@@ -42,6 +42,22 @@ export function daysSince(iso) {
   return (Date.now() - new Date(iso).getTime()) / 86_400_000;
 }
 
+/** Human due-date label: "today", "in 3 days", "2 days overdue", "in 5 weeks". */
+export function formatDue(iso) {
+  if (!iso) return '';
+  const diffDays = Math.round((new Date(iso).getTime() - Date.now()) / 86_400_000);
+  if (diffDays === 0) return 'today';
+  if (diffDays === 1) return 'tomorrow';
+  if (diffDays === -1) return 'yesterday';
+  if (diffDays < 0) {
+    const d = -diffDays;
+    return d < 14 ? `${d} days overdue` : `${Math.round(d / 7)} weeks overdue`;
+  }
+  if (diffDays < 14) return `in ${diffDays} days`;
+  if (diffDays < 60) return `in ${Math.round(diffDays / 7)} weeks`;
+  return `in ${Math.round(diffDays / 30)} months`;
+}
+
 /** Age in whole years from a YYYY-MM-DD birthdate; null if year unknown or unparseable. */
 export function computeAge(birthdate) {
   if (!birthdate) return null;

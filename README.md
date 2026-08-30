@@ -26,9 +26,9 @@ Following the build order in `spec.md`:
 - [x] **4. Rich contact fields** — birthdate/age, pronouns, how-we-met, work, location, likes, dislikes; AI extracts them, merge is non-destructive
 - [x] **5. Relationship links** — typed person-to-person links with auto-inverse; AI detects people named in a note and offers to create + link them
 - [x] **6. Voice capture** — in-browser speech-to-text (Web Speech API) into the capture box
-- [ ] 7. Reminders
+- [x] **7. Reminders** — per-person + dashboard reminders, auto yearly birthday reminders, AI turns a note's follow-up into a dated reminder
 - [ ] 8. PWA setup
-- [ ] 9. Push notifications
+- [ ] 9. Push notifications (adds the cron that fires due reminders)
 - [ ] 10. Polish
 
 ## Local development
@@ -98,6 +98,21 @@ API is open and logs a warning on every request.
 | GET | `/api/relationships/types` | allowed link types |
 | POST | `/api/relationships` | `{ from_person_id, to_person_id, type }` → creates the link + its inverse |
 | DELETE | `/api/relationships/:id` | removes both directions |
+| GET | `/api/reminders` | `?person_id=` `?scope=upcoming\|overdue\|all` `?days=30` |
+| POST | `/api/reminders` | `{ person_id, message*, due_at*, recurring? }` |
+| PATCH | `/api/reminders/:id` | edit fields, or `{ done: true }` (one-off → sent; yearly → rolls +1yr) |
+| DELETE | `/api/reminders/:id` | |
+
+### Reminders (step 7)
+
+Per-person and dashboard reminders with an optional `recurring: 'yearly'`.
+Setting a person's `birthdate` auto-creates/updates one `kind: 'birthday'`
+yearly reminder (`syncBirthdayReminder`); clearing it removes it. Marking a
+recurring reminder done rolls `due_at` forward a year instead of completing it.
+The AI parser resolves a note's follow-up ("text her the night before") to a
+concrete `due_at`, and the review card lets you confirm it into a `kind: 'ai'`
+reminder. Nothing *fires* reminders yet — that's step 9 (the cron + push);
+today they surface in the UI (dashboard "Upcoming", per-person "Reminders").
 
 ### Relationship links (step 5)
 

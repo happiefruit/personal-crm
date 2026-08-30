@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { pgrest } from '../supabase.js';
 import { linksForPerson } from '../relationships.js';
+import { syncBirthdayReminder } from '../reminders.js';
 
 const router = Router();
 
@@ -74,6 +75,7 @@ router.post('/', async (req, res, next) => {
       body: fields,
       prefer: 'return=representation',
     });
+    if (data[0].birthdate) await syncBirthdayReminder(data[0]).catch(() => {});
     res.status(201).json(data[0]);
   } catch (err) {
     next(err);
@@ -94,6 +96,7 @@ router.patch('/:id', async (req, res, next) => {
       prefer: 'return=representation',
     });
     if (!data.length) return res.status(404).json({ error: 'person not found' });
+    if ('birthdate' in fields) await syncBirthdayReminder(data[0]).catch(() => {});
     res.json(data[0]);
   } catch (err) {
     next(err);

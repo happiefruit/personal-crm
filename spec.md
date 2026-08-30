@@ -75,6 +75,8 @@ Target platform: mobile-first responsive web app, installable as a PWA on your S
 | due_at | timestamp | |
 | sent | boolean | |
 | recurring | text | nullable — e.g. "yearly" for birthdays |
+| kind | text | 'custom' \| 'birthday' \| 'ai' — birthday is auto-synced from `people.birthdate`, one per person |
+| created_at | timestamp | |
 
 ### `push_subscriptions`
 | Field | Type | Notes |
@@ -118,7 +120,7 @@ Target platform: mobile-first responsive web app, installable as a PWA on your S
 4. **Rich contact fields** (MonicaHQ-style): birthdate/age, pronouns, how-we-met, job/company, location, likes, dislikes — AI extracts, non-destructive merge ✅
 5. **Relationship links**: person↔person typed links (spouse, parent/child, colleague…) with automatic inverse; AI detects other people named in a note and offers to create + link them
 6. **Voice capture**: in-browser speech-to-text (Web Speech API) into the capture box
-7. **Reminders**: add reminders table, manual creation, and auto-creation from extracted dates
+7. **Reminders**: reminders table, manual creation, auto yearly birthday reminders, AI note follow-up → dated reminder ✅ (firing/notification is step 9)
 8. **PWA setup**: manifest.json, service worker, installable on Samsung home screen
 9. **Push notifications**: VAPID setup, permission prompt, wire up reminder-due and re-engagement triggers
 10. **Polish**: refine AI prompts based on real use, improve dashboard/search

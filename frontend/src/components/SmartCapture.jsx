@@ -53,6 +53,11 @@ function SuggestionReview({ result, lockedPerson, onCancel, onApplied }) {
   const [showDetails, setShowDetails] = useState(Boolean(hasDetails));
   const setDetail = (k, v) => setDetails((d) => ({ ...d, [k]: v }));
 
+  const rs = suggestion.reminder_suggestion;
+  const [reminderOn, setReminderOn] = useState(Boolean(rs?.due_at));
+  const [reminderMsg, setReminderMsg] = useState(rs?.message || '');
+  const [reminderDue, setReminderDue] = useState(rs?.due_at || '');
+
   const [mentions, setMentions] = useState(
     (suggestion.mentioned_people || []).map((m) => ({
       name: m.name,
@@ -104,6 +109,10 @@ function SuggestionReview({ result, lockedPerson, onCancel, onApplied }) {
                 relationship_to_subject: m.relationship_to_subject,
                 person_id: m.action === 'link' ? m.person_id : null,
               })),
+            reminder:
+              reminderOn && reminderMsg.trim() && reminderDue
+                ? { message: reminderMsg.trim(), due_at: reminderDue }
+                : null,
           };
       const person = await api.post('/api/ai/apply', payload);
       onApplied(person);
@@ -334,11 +343,35 @@ function SuggestionReview({ result, lockedPerson, onCancel, onApplied }) {
         </div>
       )}
 
-      {suggestion.reminder_suggestion && (
-        <p className="rounded-md bg-slate-800/60 px-3 py-2 text-xs text-slate-400">
-          💡 Possible follow-up: “{suggestion.reminder_suggestion.message}” (
-          {suggestion.reminder_suggestion.due_hint}). Reminders arrive in a later version.
-        </p>
+      {rs && (
+        <div className="space-y-2 rounded-md bg-slate-800/60 px-3 py-2 text-xs text-slate-400">
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={reminderOn}
+              onChange={(e) => setReminderOn(e.target.checked)}
+            />
+            <span>💡 Set a reminder{rs.due_hint ? ` (${rs.due_hint})` : ''}</span>
+          </label>
+          {reminderOn && (
+            <div className="space-y-1.5">
+              <TextInput
+                value={reminderMsg}
+                onChange={(e) => setReminderMsg(e.target.value)}
+                placeholder="Reminder text"
+              />
+              <TextInput
+                type="date"
+                value={reminderDue}
+                onChange={(e) => setReminderDue(e.target.value)}
+                className="max-w-[11rem]"
+              />
+              {!rs.due_at && !reminderDue && (
+                <p className="text-[11px] text-amber-400">Pick a date — the note didn’t give one.</p>
+              )}
+            </div>
+          )}
+        </div>
       )}
 
       <ErrorNote error={error} />

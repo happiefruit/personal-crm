@@ -5,6 +5,7 @@ import { useAsync } from '../lib/useAsync.js';
 import { computeAge, formatDate, formatDateTime, relativeTime } from '../lib/format.js';
 import { Button, Card, Chip, ErrorNote, Spinner, TextInput } from '../components/ui.jsx';
 import SmartCapture from '../components/SmartCapture.jsx';
+import Reminders from '../components/Reminders.jsx';
 
 const csv = (arr) => (arr || []).join(', ');
 const parseCsv = (s) =>
@@ -483,7 +484,10 @@ export default function Person() {
       )}
 
       {!editing && (
-        <Relationships person={person} allPeople={allPeople} onChange={reload} />
+        <>
+          <Relationships person={person} allPeople={allPeople} onChange={reload} />
+          <Reminders personId={person.id} />
+        </>
       )}
 
       <Card>
