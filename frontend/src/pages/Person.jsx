@@ -6,6 +6,7 @@ import { computeAge, formatDate, formatDateTime, relativeTime } from '../lib/for
 import { Button, Card, Chip, ErrorNote, Spinner, TextInput } from '../components/ui.jsx';
 import SmartCapture from '../components/SmartCapture.jsx';
 import Reminders from '../components/Reminders.jsx';
+import RelationshipMap from '../components/RelationshipMap.jsx';
 
 const csv = (arr) => (arr || []).join(', ');
 const parseCsv = (s) =>
@@ -86,6 +87,8 @@ function Relationships({ person, allPeople, onChange }) {
       {links.length === 0 && !adding && (
         <p className="text-sm text-slate-500">No links yet.</p>
       )}
+
+      <RelationshipMap person={person} />
 
       <ul className="divide-y divide-slate-800">
         {links.map((l) => (
